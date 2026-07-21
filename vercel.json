@@ -1,23 +1,5 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "**",
-      "use": "@vercel/static"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/dashboard",
-      "dest": "/wevois-billing-dashboard.html"
-    },
-    {
-      "src": "/executive",
-      "dest": "/wevois-billing-executive-app.html"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/$1"
-    }
-  ]
+  "framework": null,
+  "buildCommand": "",
+  "outputDirectory": "."
 }
