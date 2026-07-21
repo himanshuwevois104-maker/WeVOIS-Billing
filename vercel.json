@@ -1,9 +1,10 @@
 {
-  "version": 2,
   "cleanUrls": true,
-  "rewrites": [
-    { "source": "/", "destination": "/wevois-billing-dashboard.html" },
-    { "source": "/dashboard", "destination": "/wevois-billing-dashboard.html" },
-    { "source": "/executive", "destination": "/wevois-billing-executive-app.html" }
+  "redirects": [
+    {
+      "source": "/",
+      "destination": "/wevois-billing-dashboard.html",
+      "permanent": false
+    }
   ]
 }
