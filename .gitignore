@@ -1,5 +1,5 @@
 node_modules/
-wevois.db
+wevois.db*
 uploads/
 *.log
 .env
