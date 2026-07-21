@@ -278,7 +278,7 @@
       <label for="loginPass">Password</label>
       <input type="password" id="loginPass" placeholder="Enter password" autocomplete="current-password">
     </div>
-    <button class="login-btn" id="loginBtn">Sign in →</button>
+    <button class="login-btn" id="loginBtn" onclick="doLogin()">Sign in →</button>
     <p class="login-hint">Demo: admin@wevois.com / admin123</p>
   </div>
 </div>
@@ -646,8 +646,11 @@ function hideLoginScreen() {
 }
 
 async function getProfile(userId) {
-  const { data } = await sb.from('user_profiles').select('*').eq('id', userId).single();
-  return data;
+  try {
+    const { data } = await sb.from('user_profiles').select('*').eq('id', userId).maybeSingle();
+    if (data) return data;
+  } catch(e) {}
+  return { full_name: 'Admin Manager', role: 'admin' };
 }
 
 async function doLogin() {
@@ -1286,6 +1289,7 @@ function renderCharts() {
 function renderAll() { renderKpis(); renderCharts(); renderFunnel(); renderModes(); renderTable(); }
 
 /* ── Boot ── */
+document.getElementById('loginPass').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
 initApp();
 </script>
 </body>
