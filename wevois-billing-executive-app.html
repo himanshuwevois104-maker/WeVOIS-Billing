@@ -479,7 +479,12 @@ async function loadData() {
   if (se) { showErr('Failed to load sites: ' + se.message); return; }
   if (be) { showErr('Failed to load bills: ' + be.message); return; }
 
-  sites = (sitesData || []);
+  sites = (sitesData || []).map(s => ({
+    id: s.id,
+    name: s.name,
+    region: s.region,
+    workflow_steps: s.workflow_steps || null
+  }));
   records = {};
   sites.forEach(s => {
     records[s.id] = {};
@@ -738,6 +743,54 @@ function renderStats() {
     <div class="stat"><div class="l">Avg cycle</div><div class="v">${avg!=null?avg+' days':'—'}</div></div>`;
 }
 
+const DEFAULT_WORKFLOW_STEPS = [
+  'Not started Yet',
+  'Bill Submmited',
+  'LDC',
+  'SI',
+  'CSI',
+  'JEn',
+  'Aen',
+  'Ex.En',
+  'Accounts',
+  'CMC',
+  'PMC/ADM/SDM',
+  'Cash',
+  'Bill Cleared'
+];
+function getSiteSteps(site) {
+  if (typeof site === 'number' || typeof site === 'string') {
+    site = sites.find(s => s.id === +site);
+  }
+  if (site && Array.isArray(site.workflow_steps) && site.workflow_steps.length > 0) {
+    return site.workflow_steps;
+  }
+  return DEFAULT_WORKFLOW_STEPS;
+}
+
+function statusBadge(status, siteId) {
+  if (!status || status === 'Not started Yet' || status === 'Not Started') {
+    return `<span class="badge b-None"><span class="dot" style="background:var(--muted)"></span>Not started Yet</span>`;
+  }
+  if (status === 'On Hold') {
+    return `<span class="badge b-Hold"><span class="dot" style="background:var(--stage-hold)"></span>⚠️ On Hold</span>`;
+  }
+  const steps = getSiteSteps(siteId || state.site);
+  let idx = steps.indexOf(status);
+  if (idx === -1) {
+    if (status === 'Submitted') idx = steps.indexOf('Bill Submmited') !== -1 ? steps.indexOf('Bill Submmited') : 1;
+    else if (status === 'Verified') idx = steps.indexOf('JEn') !== -1 ? steps.indexOf('JEn') : 5;
+    else if (status === 'Approved') idx = steps.indexOf('Accounts') !== -1 ? steps.indexOf('Accounts') : 8;
+    else if (status === 'Paid') idx = steps.length - 1;
+    else return `<span class="badge" style="background:var(--surface-2);border:1px solid var(--border);color:var(--brand);font-weight:600">${status}</span>`;
+  }
+  const isCleared = (idx === steps.length - 1) || status === 'Bill Cleared' || status === 'Paid';
+  if (isCleared) {
+    return `<span class="badge b-Paid"><span class="dot" style="background:var(--stage-4)"></span>✓ ${status}</span>`;
+  }
+  return `<span class="badge" style="background:var(--surface-2);border:1px solid var(--border);color:var(--brand);font-weight:700" title="Step ${idx+1} of ${steps.length}"><span class="dot" style="background:var(--brand)"></span>${idx+1}/${steps.length} · ${status}</span>`;
+}
+
 function renderHistory() {
   document.getElementById('history').innerHTML=MONTHS.slice().reverse().map(m=>{
     const r=records[state.site]?.[m.key]||{reported:false};
@@ -747,7 +800,7 @@ function renderHistory() {
         <div class="n">${r.reported?short(r.net):'—'}</div>
         <div class="s">${r.reported?(r.penalty?'penalty −'+short(r.penalty):'no penalty'):'not entered'}</div>
       </div>
-      ${r.reported?statusBadge(r.status):''}
+      ${r.reported?statusBadge(r.status, state.site):''}
       ${ageChip(r)}
       <div class="chev">›</div>
     </div>`;
@@ -769,15 +822,15 @@ function syncNet() {
   document.getElementById('uNet').value=rupees(Math.max(0,b-p));
 }
 function syncMode() {
-  const paid=pickedStage==='Paid';
+  const paid=pickedStage==='Paid'||pickedStage==='Cash'||pickedStage==='Bill Cleared';
   document.getElementById('uMode').disabled=!paid;
-  document.getElementById('modeHint').textContent=paid?'Cash-branch settlement mode for this payment.':'Payment mode is enabled when the stage is Paid.';
+  document.getElementById('modeHint').textContent=paid?'Cash-branch settlement mode for this payment.':'Payment mode is enabled when the stage is Cash or Bill Cleared.';
 }
 function renderStagePick() {
-  const opts=[...STAGES,'On Hold'];
-  const map={Submitted:'var(--stage-1)',Verified:'var(--stage-2)',Approved:'var(--stage-3)',Paid:'var(--stage-4)','On Hold':'var(--stage-hold)'};
+  const steps = getSiteSteps(state.site);
+  const opts = [...steps.filter(s => s !== 'Not started Yet'), 'On Hold'];
   document.getElementById('stagePick').innerHTML=opts.map(o=>
-    `<button class="sp ${pickedStage===o?'sel':''}" data-st="${o}"><span class="dot" style="background:${map[o]}"></span>${o}</button>`
+    `<button class="sp ${pickedStage===o?'sel':''}" data-st="${o}"><span class="dot" style="background:${o==='On Hold'?'var(--stage-hold)':'var(--brand)'}"></span>${o}</button>`
   ).join('');
   document.querySelectorAll('.sp').forEach(b=>b.addEventListener('click',()=>{pickedStage=b.dataset.st;renderStagePick();syncMode();}));
 }

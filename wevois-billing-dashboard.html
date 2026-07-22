@@ -640,6 +640,37 @@
   </div>
 </div>
 
+<!-- Workflow Customizer Modal (Per Site) -->
+<div class="overlay" id="wfOverlay">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-head">
+      <div>
+        <h3 id="wfModalTitle">Customize Billing Flow</h3>
+        <p class="sub" id="wfModalSub">Add, remove, or reorder steps specifically for this site.</p>
+      </div>
+      <button class="close" data-close>×</button>
+    </div>
+
+    <div style="margin:12px 0 16px">
+      <label style="font-weight:600;font-size:13px;display:block;margin-bottom:6px">Workflow Steps (in order)</label>
+      <div id="wfStepList" style="display:flex;flex-direction:column;gap:6px;max-height:280px;overflow-y:auto;border:1px solid var(--border);border-radius:10px;padding:10px;background:var(--surface-2)"></div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-bottom:18px">
+      <input type="text" id="newWfStepInput" placeholder="Add custom step (e.g. NOC Clearance)" style="flex:1">
+      <button class="btn" id="addWfStepBtn" type="button" style="flex:none">+ Add step</button>
+    </div>
+
+    <div class="form-actions" style="display:flex;justify-content:space-between;align-items:center">
+      <button class="btn" id="resetWfBtn" type="button" style="color:var(--muted)">🔄 Reset to default (13 steps)</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn" data-close type="button">Cancel</button>
+        <button class="btn primary" id="saveWfBtn" type="button">Save for this site</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Notesheet viewer -->
 <div class="overlay" id="noteOverlay">
   <div class="modal">
@@ -676,6 +707,31 @@ function buildMonths() {
   return arr;
 }
 const MONTHS = buildMonths();
+const DEFAULT_WORKFLOW_STEPS = [
+  'Not started Yet',
+  'Bill Submmited',
+  'LDC',
+  'SI',
+  'CSI',
+  'JEn',
+  'Aen',
+  'Ex.En',
+  'Accounts',
+  'CMC',
+  'PMC/ADM/SDM',
+  'Cash',
+  'Bill Cleared'
+];
+function getSiteSteps(site) {
+  if (typeof site === 'number' || typeof site === 'string') {
+    site = sites.find(s => s.id === +site);
+  }
+  if (site && Array.isArray(site.workflow_steps) && site.workflow_steps.length > 0) {
+    return site.workflow_steps;
+  }
+  return DEFAULT_WORKFLOW_STEPS;
+}
+
 const STAGES = ['Submitted','Verified','Approved','Paid'];
 const MODES  = ['Treasury','Self','PFMS','Cheque'];
 const DAY = 86400000, HOUR = 3600000;
@@ -691,8 +747,10 @@ let flagMap     = {};
 let drillSiteId = null;
 const WRITER_ROLES     = ['accounts','admin'];            // may create / edit bills
 const LEADERSHIP_ROLES = ['leadership','admin'];          // VP & CEO — may raise flags
-const canWrite = () => WRITER_ROLES.includes(currentUser?.role);
-const canFlag  = () => LEADERSHIP_ROLES.includes(currentUser?.role);
+const WORKFLOW_ROLES   = ['billing_manager','site_manager','admin'];
+const canWrite          = () => WRITER_ROLES.includes(currentUser?.role);
+const canFlag           = () => LEADERSHIP_ROLES.includes(currentUser?.role);
+const canManageWorkflow = () => WORKFLOW_ROLES.includes(currentUser?.role);
 const flagKey  = (sid, mk) => sid + '|' + mk;
 const ROLE_META = [
   ['accounts','Accounts team'], ['billing_manager','Billing Manager'],
@@ -735,7 +793,13 @@ async function loadData() {
   if (se) { toast('Failed to load sites: ' + se.message); return; }
   if (be) { toast('Failed to load bills: ' + be.message); return; }
 
-  sites   = (sitesData || []).map(s => ({ id: s.id, name: s.name, region: s.region, base: 0 }));
+  sites   = (sitesData || []).map(s => ({
+    id: s.id,
+    name: s.name,
+    region: s.region,
+    workflow_steps: s.workflow_steps || null,
+    base: 0
+  }));
   records = {};
   sites.forEach(s => {
     records[s.id] = {};
@@ -1109,11 +1173,27 @@ function renderModes() {
 /* ============================================================
    Site table
    ============================================================ */
-function statusBadge(status) {
-  if (!status) return `<span class="badge b-None"><span class="dot" style="background:var(--warn)"></span>Not reported</span>`;
-  const map = { Submitted:'var(--stage-1)', Verified:'var(--stage-2)', Approved:'var(--stage-3)', Paid:'var(--stage-4)', 'On Hold':'var(--stage-hold)' };
-  const cls = status==='On Hold' ? 'b-Hold' : ('b-'+status);
-  return `<span class="badge ${cls}"><span class="dot" style="background:${map[status]}"></span>${status}</span>`;
+function statusBadge(status, site) {
+  if (!status || status === 'Not started Yet' || status === 'Not Started') {
+    return `<span class="badge b-None"><span class="dot" style="background:var(--muted)"></span>Not started Yet</span>`;
+  }
+  if (status === 'On Hold') {
+    return `<span class="badge b-Hold"><span class="dot" style="background:var(--stage-hold)"></span>⚠️ On Hold</span>`;
+  }
+  const steps = getSiteSteps(site);
+  let idx = steps.indexOf(status);
+  if (idx === -1) {
+    if (status === 'Submitted') idx = steps.indexOf('Bill Submmited') !== -1 ? steps.indexOf('Bill Submmited') : 1;
+    else if (status === 'Verified') idx = steps.indexOf('JEn') !== -1 ? steps.indexOf('JEn') : 5;
+    else if (status === 'Approved') idx = steps.indexOf('Accounts') !== -1 ? steps.indexOf('Accounts') : 8;
+    else if (status === 'Paid') idx = steps.length - 1;
+    else return `<span class="badge" style="background:var(--surface-2);border:1px solid var(--border);color:var(--brand);font-weight:600">${status}</span>`;
+  }
+  const isCleared = (idx === steps.length - 1) || status === 'Bill Cleared' || status === 'Paid';
+  if (isCleared) {
+    return `<span class="badge b-Paid"><span class="dot" style="background:var(--stage-4)"></span>✓ ${status}</span>`;
+  }
+  return `<span class="badge" style="background:var(--surface-2);border:1px solid var(--border);color:var(--brand);font-weight:700" title="Step ${idx+1} of ${steps.length}"><span class="dot" style="background:var(--brand)"></span>${idx+1}/${steps.length} · ${status}</span>`;
 }
 function renderAgeingStrip(rows) {
   const el = document.getElementById('ageingStrip');
@@ -1170,7 +1250,7 @@ function renderTable() {
       <td class="num" style="color:${r.gst?'var(--penalty)':'inherit'}">${r.gst!=null?(r.gst?'−'+rupees(r.gst):'₹0'):'—'}</td>
       <td class="num" style="color:${r.tds?'var(--penalty)':'inherit'}">${r.tds!=null?(r.tds?'−'+rupees(r.tds):'₹0'):'—'}</td>
       <td class="num" style="font-weight:650">${r.net!=null?rupees(r.net):'—'}</td>
-      <td title="${dateTitle(r.rec)}">${statusBadge(r.status)}${r.status==='Paid'&&r.mode?`<div class="site-region" style="margin-top:2px">via ${r.mode}</div>`:''}</td>
+      <td title="${dateTitle(r.rec)}">${statusBadge(r.status, r.id)} ${canManageWorkflow() ? `<span class="note-chip" data-editwf="${r.id}" style="margin-left:4px" title="Customize billing flow for this site">⚙️ Flow</span>` : ''}${(r.status==='Paid'||r.status==='Bill Cleared'||r.status==='Cash')&&r.mode?`<div class="site-region" style="margin-top:2px">via ${r.mode}</div>`:''}</td>
       <td>${ageingCell(r.rec)}</td>
       <td>${ageCell(r.rec)}</td>
       <td>${r.note?`<span class="note-chip" data-note="${r.id}">📎 View</span>`:(r.status?'<span class="note-none">— none</span>':'<span class="note-none">—</span>')}</td>
@@ -1178,6 +1258,11 @@ function renderTable() {
   ).join('');
   document.querySelectorAll('#tblBody tr').forEach(tr => {
     tr.addEventListener('click', e => {
+      if (e.target.closest('[data-editwf]')) {
+        e.stopPropagation();
+        openWorkflowEditor(+e.target.closest('[data-editwf]').dataset.editwf);
+        return;
+      }
       if (e.target.closest('.note-chip')) { openNote(+e.target.closest('.note-chip').dataset.note); return; }
       openDrill(+tr.dataset.site);
     });
@@ -1751,9 +1836,99 @@ async function submitCityReq() {
   closeOverlays();
 }
 
+/* ============================================================
+   Workflow Editor (Per Site)
+   ============================================================ */
+let editingWfSiteId = null;
+let currentEditingWfSteps = [];
+
+function openWorkflowEditor(siteId) {
+  editingWfSiteId = siteId;
+  const s = sites.find(x => x.id === siteId);
+  if (!s) return;
+  document.getElementById('wfModalTitle').textContent = 'Customize Billing Flow — ' + s.name;
+  document.getElementById('wfModalSub').textContent = 'Add, remove, or reorder steps specifically for ' + s.name + '.';
+  currentEditingWfSteps = [...getSiteSteps(s)];
+  renderWfStepList();
+  openOverlay('wfOverlay');
+}
+
+function renderWfStepList() {
+  const container = document.getElementById('wfStepList');
+  if (!container) return;
+  container.innerHTML = currentEditingWfSteps.map((step, idx) => `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:8px">
+      <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600">
+        <span style="color:var(--muted);width:22px">${idx + 1}.</span>
+        <span>${step}</span>
+      </div>
+      <div style="display:flex;gap:4px">
+        ${idx > 0 ? `<button class="btn" style="padding:2px 7px;font-size:11px" type="button" onclick="moveWfStep(${idx}, -1)">▲</button>` : ''}
+        ${idx < currentEditingWfSteps.length - 1 ? `<button class="btn" style="padding:2px 7px;font-size:11px" type="button" onclick="moveWfStep(${idx}, 1)">▼</button>` : ''}
+        ${currentEditingWfSteps.length > 1 ? `<button class="btn" style="padding:2px 7px;font-size:11px;color:var(--bad)" type="button" onclick="removeWfStep(${idx})">✕</button>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+function moveWfStep(idx, dir) {
+  const target = idx + dir;
+  if (target < 0 || target >= currentEditingWfSteps.length) return;
+  const temp = currentEditingWfSteps[idx];
+  currentEditingWfSteps[idx] = currentEditingWfSteps[target];
+  currentEditingWfSteps[target] = temp;
+  renderWfStepList();
+}
+
+function removeWfStep(idx) {
+  if (currentEditingWfSteps.length <= 1) { toast('At least 1 step is required'); return; }
+  currentEditingWfSteps.splice(idx, 1);
+  renderWfStepList();
+}
+
+function addWfStep() {
+  const input = document.getElementById('newWfStepInput');
+  const val = input ? input.value.trim() : '';
+  if (!val) { toast('Enter step name'); return; }
+  if (currentEditingWfSteps.includes(val)) { toast('Step already exists'); return; }
+  currentEditingWfSteps.push(val);
+  if (input) input.value = '';
+  renderWfStepList();
+}
+
+function resetWfSteps() {
+  currentEditingWfSteps = [...DEFAULT_WORKFLOW_STEPS];
+  renderWfStepList();
+  toast('Reset to default 13 steps');
+}
+
+async function saveWfForSite() {
+  if (!editingWfSiteId) return;
+  const s = sites.find(x => x.id === editingWfSiteId);
+  if (!s) return;
+  const btn = document.getElementById('saveWfBtn');
+  if (btn) { btn.textContent = 'Saving…'; btn.disabled = true; }
+  try {
+    const { error } = await sb.from('sites').update({ workflow_steps: currentEditingWfSteps }).eq('id', editingWfSiteId);
+    if (error) { toast('Save failed: ' + error.message); return; }
+    s.workflow_steps = currentEditingWfSteps;
+    toast('✅ Billing flow updated for ' + s.name);
+    closeOverlays();
+    renderAll();
+  } catch (e) {
+    toast('Save failed: ' + e.message);
+  } finally {
+    if (btn) { btn.textContent = 'Save for this site'; btn.disabled = false; }
+  }
+}
+
 /* ── Boot ── */
 document.getElementById('loginBtn').addEventListener('click', doLogin);
 document.getElementById('loginPass').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
+document.getElementById('addWfStepBtn')?.addEventListener('click', addWfStep);
+document.getElementById('resetWfBtn')?.addEventListener('click', resetWfSteps);
+document.getElementById('saveWfBtn')?.addEventListener('click', saveWfForSite);
+document.getElementById('newWfStepInput')?.addEventListener('keydown', e => { if (e.key === 'Enter') addWfStep(); });
 initApp();
 </script>
 </body>
