@@ -821,7 +821,8 @@ async function loadData() {
     }
   }
 
-  const isUnrestricted = currentUser?.role === 'admin' || currentUser?.role === 'leadership';
+  const userRole = (currentUser?.role || '').toLowerCase();
+  const isUnrestricted = userRole === 'admin' || userRole === 'leadership' || userRole === 'vp' || userRole === 'ceo';
 
   let userAssignedSiteIds = [];
   if (!isUnrestricted && currentUser?.id) {

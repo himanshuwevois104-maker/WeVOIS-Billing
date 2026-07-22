@@ -215,6 +215,17 @@
     </div>
   </div>
 
+  <!-- Billing Managers Hierarchy & Site Mapping -->
+  <div class="card" style="margin-bottom:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+      <div>
+        <h2>Billing Managers &amp; Assigned Sites</h2>
+        <p class="cap" style="margin:0">Click on a Billing Manager to view assigned municipal sites and click any site to view detailed analytics &amp; charts.</p>
+      </div>
+    </div>
+    <div id="bmCards" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));gap:14px;margin-top:14px"></div>
+  </div>
+
   <div class="card" style="margin-bottom:16px">
     <h2>Overdue sites — action list</h2>
     <p class="cap">Unpaid bills, most overdue first · raise a flag for Accounts &amp; Billing Managers to action</p>
@@ -233,6 +244,52 @@
     <h2>City change requests</h2>
     <p class="cap">Add / remove-city requests · approve to apply immediately</p>
     <div id="reqList"></div>
+  </div>
+</div>
+
+<!-- Site Analytics & Charts Modal -->
+<div class="overlay" id="siteChartOverlay">
+  <div class="modal" style="max-width:880px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div>
+        <h3 id="scTitle" style="margin:0">Site Analytics</h3>
+        <p id="scSub" style="margin:2px 0 0;font-size:12px;color:var(--muted)"></p>
+      </div>
+      <button class="btn" data-close style="padding:4px 10px">✕</button>
+    </div>
+
+    <!-- KPIs for this site -->
+    <div id="scKpis" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px"></div>
+
+    <!-- Chart 1: 12-Month Billing Trend -->
+    <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <h4 style="margin:0;font-size:13px;font-weight:750">Month-on-Month — Billed vs Net Payable (₹)</h4>
+        <div style="display:flex;gap:12px;font-size:11px;font-weight:600"><span style="color:var(--billed)">■ Billed</span> <span style="color:var(--net)">■ Net Payable</span></div>
+      </div>
+      <div id="scChart" style="height:190px"></div>
+    </div>
+
+    <!-- Chart 2 & 3: Deductions & Workflow Status -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+      <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:14px">
+        <h4 style="margin:0 0 8px;font-size:13px;font-weight:750">Deductions Breakdown</h4>
+        <div id="scDeductions"></div>
+      </div>
+      <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:14px">
+        <h4 style="margin:0 0 8px;font-size:13px;font-weight:750">Current Workflow &amp; Holding Status</h4>
+        <div id="scWorkflow"></div>
+      </div>
+    </div>
+
+    <!-- History Table & PDF Action -->
+    <div style="overflow-x:auto">
+      <h4 style="margin:0 0 8px;font-size:13px;font-weight:750">12-Month Billing Log</h4>
+      <table style="width:100%">
+        <thead><tr><th>Month</th><th class="num">Billed</th><th class="num">Penalty</th><th class="num">GST</th><th class="num">TDS</th><th class="num">Net</th><th>Stage</th><th>Document</th></tr></thead>
+        <tbody id="scLogBody"></tbody>
+      </table>
+    </div>
   </div>
 </div>
 
@@ -328,21 +385,230 @@ async function getProfile(uid){
   return { full_name:'Leadership', role:'leadership' };
 }
 
+let profiles = [], siteAssignments = [];
+
+const MONTHS = [
+  { key: '2025-08', label: "Aug '25", short: "Aug '25" },
+  { key: '2025-09', label: "Sep '25", short: "Sep '25" },
+  { key: '2025-10', label: "Oct '25", short: "Oct '25" },
+  { key: '2025-11', label: "Nov '25", short: "Nov '25" },
+  { key: '2025-12', label: "Dec '25", short: "Dec '25" },
+  { key: '2026-01', label: "Jan '26", short: "Jan '26" },
+  { key: '2026-02', label: "Feb '26", short: "Feb '26" },
+  { key: '2026-03', label: "Mar '26", short: "Mar '26" },
+  { key: '2026-04', label: "Apr '26", short: "Apr '26" },
+  { key: '2026-05', label: "May '26", short: "May '26" },
+  { key: '2026-06', label: "Jun '26", short: "Jun '26" },
+  { key: '2026-07', label: "Jul '26", short: "Jul '26" }
+];
+
 /* ---- data ---- */
 async function loadData(){
-  const [{ data: s }, { data: b }, { data: f }, { data: r }] = await Promise.all([
+  const [{ data: s }, { data: b }, { data: f }, { data: r }, { data: p }, { data: a }] = await Promise.all([
     sb.from('sites').select('*').order('region').order('name'),
     sb.from('bills').select('*'),
     sb.from('bill_flags').select('*').eq('status','open'),
-    sb.from('city_requests').select('*').order('created_at',{ascending:false})
+    sb.from('city_requests').select('*').order('created_at',{ascending:false}),
+    sb.from('user_profiles').select('*'),
+    sb.from('site_assignments').select('*')
   ]);
   sites = s || []; bills = b || []; flags = f || []; requests = r || [];
+  profiles = p || []; siteAssignments = a || [];
   flagMap = {}; flags.forEach(x=>{ flagMap[flagKey(x.site_id,x.month_key)] = x; });
 }
 const siteById = id => sites.find(s=>s.id===id);
 
 /* ---- render ---- */
-function renderAll(){ renderKpis(); renderAgeing(); renderRegions(); renderOverdue(); renderRequests(); }
+function renderAll(){ renderKpis(); renderAgeing(); renderRegions(); renderBillingManagers(); renderOverdue(); renderRequests(); }
+
+function renderBillingManagers() {
+  const container = document.getElementById('bmCards');
+  if (!container) return;
+
+  const bmProfiles = profiles.filter(p => p.role === 'billing_manager');
+  
+  if (!bmProfiles.length) {
+    container.innerHTML = `<div class="empty">No Billing Managers registered in system yet. All sites listed in table below.</div>`;
+    return;
+  }
+
+  container.innerHTML = bmProfiles.map(bm => {
+    const assignedSiteIds = siteAssignments.filter(a => a.user_id === bm.id).map(a => a.site_id);
+    const bmSites = sites.filter(s => assignedSiteIds.includes(s.id));
+    const bmBills = bills.filter(b => assignedSiteIds.includes(b.site_id));
+
+    let gross = 0, net = 0, pen = 0, gst = 0, tds = 0;
+    bmBills.forEach(b => {
+      gross += b.billed || 0;
+      pen += b.penalty || 0;
+      gst += b.gst || 0;
+      tds += b.tds || 0;
+      net += netOf(b);
+    });
+
+    return `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;box-shadow:var(--shadow)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div>
+            <h3 style="margin:0;font-size:15px;font-weight:750">👤 ${bm.full_name || bm.email.split('@')[0]}</h3>
+            <p style="margin:2px 0 0;font-size:12px;color:var(--muted)">${bm.email} · <span style="color:var(--brand);font-weight:600">${bmSites.length} Assigned Site${bmSites.length===1?'':'s'}</span></p>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;padding:10px;background:var(--surface-2);border-radius:10px;font-size:12px">
+          <div><span style="color:var(--muted)">Gross Billed:</span> <br><strong style="font-size:14px;color:var(--billed)">${short(gross)}</strong></div>
+          <div><span style="color:var(--muted)">Net Payable:</span> <br><strong style="font-size:14px;color:var(--net)">${short(net)}</strong></div>
+          <div><span style="color:var(--muted)">Deductions:</span> <br><strong style="font-size:12px;color:var(--penalty)">${short(pen + gst + tds)}</strong></div>
+          <div><span style="color:var(--muted)">Filed Bills:</span> <br><strong style="font-size:12px">${bmBills.length} records</strong></div>
+        </div>
+        <h4 style="margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.3px;color:var(--muted)">Assigned Municipal Sites (Click to view charts):</h4>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          ${bmSites.length ? bmSites.map(s => {
+            const siteBills = bills.filter(b => b.site_id === s.id);
+            const latest = siteBills.sort((a,b) => b.month_key.localeCompare(a.month_key))[0];
+            return `
+              <div onclick="openSiteChart(${s.id})" style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:.15s">
+                <div>
+                  <strong style="font-size:13px;color:var(--brand)">📍 ${s.name}</strong>
+                  <div style="font-size:11px;color:var(--muted)">${s.region || ''} ${latest ? ' · Status: ' + latest.status : ''}</div>
+                </div>
+                <span style="font-size:12px;font-weight:700;color:var(--ink-2)">📊 View Analytics ›</span>
+              </div>
+            `;
+          }).join('') : '<div style="font-size:12px;color:var(--muted)">No sites assigned to this manager yet.</div>'}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+let chartSiteId = null;
+
+async function openSiteChart(siteId) {
+  chartSiteId = siteId;
+  const s = sites.find(x => x.id === siteId);
+  if (!s) return;
+
+  document.getElementById('scTitle').textContent = 'Site Financial & Workflow Analytics — ' + s.name;
+  document.getElementById('scSub').textContent = (s.region || '') + ' · Complete Monthly Billing & Deductions History';
+
+  const siteBills = bills.filter(b => b.site_id === siteId);
+
+  const mKeys = MONTHS.map(m => m.key);
+  const monthMap = {};
+  mKeys.forEach(k => { monthMap[k] = null; });
+  siteBills.forEach(b => { if (monthMap[b.month_key] !== undefined) monthMap[b.month_key] = b; });
+
+  let totBilled = 0, totNet = 0, totPen = 0, totGst = 0, totTds = 0;
+  const billedArr = [], netArr = [];
+
+  mKeys.forEach(k => {
+    const b = monthMap[k];
+    const gross = b ? (b.billed || 0) : 0;
+    const net = b ? netOf(b) : 0;
+    totBilled += gross;
+    totNet += net;
+    totPen += b ? (b.penalty || 0) : 0;
+    totGst += b ? (b.gst || 0) : 0;
+    totTds += b ? (b.tds || 0) : 0;
+    billedArr.push(gross);
+    netArr.push(net);
+  });
+
+  document.getElementById('scKpis').innerHTML = `
+    <div style="background:var(--surface-2);padding:10px;border-radius:10px;border:1px solid var(--border)">
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase">Gross Billed</div>
+      <div style="font-size:18px;font-weight:800;color:var(--billed);margin-top:2px">${short(totBilled)}</div>
+    </div>
+    <div style="background:var(--surface-2);padding:10px;border-radius:10px;border:1px solid var(--border)">
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase">Net Payable</div>
+      <div style="font-size:18px;font-weight:800;color:var(--net);margin-top:2px">${short(totNet)}</div>
+    </div>
+    <div style="background:var(--surface-2);padding:10px;border-radius:10px;border:1px solid var(--border)">
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase">Total Deductions</div>
+      <div style="font-size:18px;font-weight:800;color:var(--penalty);margin-top:2px">${short(totPen + totGst + totTds)}</div>
+    </div>
+    <div style="background:var(--surface-2);padding:10px;border-radius:10px;border:1px solid var(--border)">
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase">Filed Months</div>
+      <div style="font-size:18px;font-weight:800;color:var(--brand);margin-top:2px">${siteBills.length} / 12</div>
+    </div>
+  `;
+
+  renderSiteSvgChart('scChart', MONTHS, billedArr, netArr);
+
+  const totDed = (totPen + totGst + totTds) || 1;
+  const pPen = (totPen / totDed * 100).toFixed(1);
+  const pGst = (totGst / totDed * 100).toFixed(1);
+  const pTds = (totTds / totDed * 100).toFixed(1);
+  document.getElementById('scDeductions').innerHTML = `
+    <div style="display:flex;height:18px;border-radius:6px;overflow:hidden;margin-bottom:10px;border:1px solid var(--border)">
+      <span style="width:${pPen}%;background:var(--penalty)" title="Penalty: ${short(totPen)}"></span>
+      <span style="width:${pGst}%;background:var(--warn)" title="GST: ${short(totGst)}"></span>
+      <span style="width:${pTds}%;background:var(--billed)" title="TDS: ${short(totTds)}"></span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px;font-size:12px">
+      <div style="display:flex;justify-content:space-between"><span><span style="color:var(--penalty)">■</span> Penalty:</span> <strong>${short(totPen)} (${pPen}%)</strong></div>
+      <div style="display:flex;justify-content:space-between"><span><span style="color:var(--warn)">■</span> GST:</span> <strong>${short(totGst)} (${pGst}%)</strong></div>
+      <div style="display:flex;justify-content:space-between"><span><span style="color:var(--billed)">■</span> TDS:</span> <strong>${short(totTds)} (${pTds}%)</strong></div>
+    </div>
+  `;
+
+  const latestBill = siteBills.sort((a,b) => b.month_key.localeCompare(a.month_key))[0];
+  const curStatus = latestBill ? latestBill.status : 'Not started Yet';
+  document.getElementById('scWorkflow').innerHTML = `
+    <div style="margin-bottom:8px">
+      <span style="font-size:12px;color:var(--muted)">Latest Month (${latestBill ? monthLabel(latestBill.month_key) : '—'}):</span>
+      <div style="font-size:16px;font-weight:800;color:var(--brand);margin-top:2px">📍 ${curStatus}</div>
+    </div>
+    <p style="font-size:12px;color:var(--ink-2);margin:0">
+      ${latestBill?.remark ? '💬 <strong>Remark:</strong> ' + latestBill.remark : 'No remarks attached for current stage.'}
+    </p>
+  `;
+
+  const logBody = document.getElementById('scLogBody');
+  logBody.innerHTML = MONTHS.slice().reverse().map(m => {
+    const b = monthMap[m.key];
+    if (!b) {
+      return `<tr><td>${m.label}</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td><span style="color:var(--muted)">Not started Yet</span></td><td>—</td></tr>`;
+    }
+    const isPdf = b.notesheet_path ? b.notesheet_path.toLowerCase().endsWith('.pdf') : false;
+    return `<tr>
+      <td><b>${m.label}</b></td>
+      <td class="num">${rupees(b.billed)}</td>
+      <td class="num" style="color:${b.penalty?'var(--penalty)':'inherit'}">${b.penalty?'−'+rupees(b.penalty):'₹0'}</td>
+      <td class="num" style="color:${b.gst?'var(--penalty)':'inherit'}">${b.gst?'−'+rupees(b.gst):'₹0'}</td>
+      <td class="num" style="color:${b.tds?'var(--penalty)':'inherit'}">${b.tds?'−'+rupees(b.tds):'₹0'}</td>
+      <td class="num" style="font-weight:700">${rupees(netOf(b))}</td>
+      <td><strong>${b.status}</strong></td>
+      <td>${b.notesheet_path ? `<button onclick="openNote('${b.notesheet_path}','${s.name.replace(/'/g,"\\'")}','${m.key}')" class="mini" style="border:1px solid var(--brand);color:var(--brand);background:transparent;border-radius:6px;padding:3px 8px;cursor:pointer;font-weight:600">${isPdf?'📄 PDF':'📎 View'}</button>` : '<span style="color:var(--muted)">—</span>'}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('siteChartOverlay').classList.add('open');
+}
+
+function renderSiteSvgChart(containerId, months, billedArr, netArr) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const max = Math.max(1, ...billedArr, ...netArr);
+  const W = 800, H = 160, pt = 15, pb = 25, pl = 40, pr = 15;
+  const iw = W - pl - pr, ih = H - pt - pb;
+
+  const stepW = iw / months.length;
+  const barW = Math.max(10, Math.floor(stepW / 3));
+
+  let bars = '';
+  months.forEach((m, i) => {
+    const x = pl + (i + 0.5) * stepW;
+    const bH = (billedArr[i] / max) * ih;
+    const nH = (netArr[i] / max) * ih;
+    
+    bars += `<rect x="${x - barW}" y="${pt + ih - bH}" width="${barW - 1}" height="${bH}" fill="var(--billed)" opacity="0.85" rx="3" title="${m.label} Billed: ${short(billedArr[i])}"/>`;
+    bars += `<rect x="${x}" y="${pt + ih - nH}" width="${barW - 1}" height="${nH}" fill="var(--net)" opacity="0.9" rx="3" title="${m.label} Net: ${short(netArr[i])}"/>`;
+    bars += `<text x="${x}" y="${H - 5}" font-size="10" fill="var(--muted)" text-anchor="middle">${m.short}</text>`;
+  });
+
+  container.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:100%">${bars}<line x1="${pl}" y1="${pt+ih}" x2="${W-pr}" y2="${pt+ih}" stroke="var(--axis)" stroke-width="1"/></svg>`;
+}
 
 function unpaidBills(){ return bills.filter(b=>b.status && b.status!=='Paid'); }
 
