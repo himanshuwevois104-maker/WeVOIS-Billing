@@ -452,6 +452,17 @@
     </div>
   </div>
 
+  <!-- Billing Managers Hierarchy & Site Mapping (Leadership / Admin view) -->
+  <div class="card" id="bmCard" style="display:none;margin-bottom:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+      <div>
+        <h2 style="font-size:15px;margin:0 0 3px">Billing Managers &amp; Assigned Sites</h2>
+        <p class="cap" style="margin:0">Overview of Billing Managers, their assigned municipal sites, gross billed, deductions, and site analytics.</p>
+      </div>
+    </div>
+    <div id="bmCards" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));gap:14px;margin-top:14px"></div>
+  </div>
+
   <!-- Table -->
   <div class="card">
     <div class="tbl-head">
@@ -838,13 +849,18 @@ async function loadData() {
     userAssignedSiteIds = (asg || []).map(a => a.site_id);
   }
 
-  const [{ data: sitesData, error: se }, { data: billsData, error: be }, { data: flagsData }] = await Promise.all([
+  const [{ data: sitesData, error: se }, { data: billsData, error: be }, { data: flagsData }, { data: profsData }, { data: asgData }] = await Promise.all([
     sb.from('sites').select('*').order('region').order('name'),
     sb.from('bills').select('*').in('month_key', keys),
-    sb.from('bill_flags').select('*').eq('status', 'open')
+    sb.from('bill_flags').select('*').eq('status', 'open'),
+    sb.from('user_profiles').select('*'),
+    sb.from('site_assignments').select('*')
   ]);
   if (se) { toast('Failed to load sites: ' + se.message); return; }
   if (be) { toast('Failed to load bills: ' + be.message); return; }
+
+  profiles = profsData || [];
+  siteAssignments = asgData || [];
 
   const allSites = (sitesData || []).map(s => ({
     id: s.id,
@@ -1135,7 +1151,77 @@ function applyRole() {
       + (of ? ' · 🚩 ' + of + ' open flag' + (of===1?'':'s') : '');
   }
 }
-function renderAll() { applyRole(); renderKpis(); renderCharts(); renderFunnel(); renderModes(); renderTable(); }
+function renderBillingManagers() {
+  const container = document.getElementById('bmCards');
+  const bmCard = document.getElementById('bmCard');
+  const r = (currentUser?.role || '').toLowerCase();
+  const isLeadership = r === 'leadership' || r === 'admin' || r === 'vp' || r === 'ceo';
+  
+  if (bmCard) bmCard.style.display = isLeadership ? 'block' : 'none';
+  if (!container || !isLeadership) return;
+
+  const bmProfiles = profiles.filter(p => p.role === 'billing_manager');
+  
+  if (!bmProfiles.length) {
+    container.innerHTML = `<div style="font-size:12.5px;color:var(--muted);padding:8px">No Billing Managers registered in system yet. All municipal sites listed in table below.</div>`;
+    return;
+  }
+
+  container.innerHTML = bmProfiles.map(bm => {
+    const assignedSiteIds = siteAssignments.filter(a => a.user_id === bm.id).map(a => a.site_id);
+    const bmSites = sites.filter(s => assignedSiteIds.includes(s.id));
+    
+    let gross = 0, net = 0, pen = 0, gst = 0, tds = 0, reported = 0;
+    bmSites.forEach(s => {
+      MONTHS.forEach(m => {
+        const rec = records[s.id]?.[m.key];
+        if (rec && rec.reported) {
+          reported++;
+          gross += rec.billed || 0;
+          pen += rec.penalty || 0;
+          gst += rec.gst || 0;
+          tds += rec.tds || 0;
+          net += rec.net || 0;
+        }
+      });
+    });
+
+    return `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;box-shadow:var(--shadow)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div>
+            <h3 style="margin:0;font-size:15px;font-weight:750">👤 ${bm.full_name || bm.email.split('@')[0]}</h3>
+            <p style="margin:2px 0 0;font-size:12px;color:var(--muted)">${bm.email} · <span style="color:var(--brand);font-weight:600">${bmSites.length} Assigned Site${bmSites.length===1?'':'s'}</span></p>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;padding:10px;background:var(--surface-2);border-radius:10px;font-size:12px">
+          <div><span style="color:var(--muted)">Gross Billed:</span> <br><strong style="font-size:14px;color:var(--billed)">${short(gross)}</strong></div>
+          <div><span style="color:var(--muted)">Net Payable:</span> <br><strong style="font-size:14px;color:var(--net)">${short(net)}</strong></div>
+          <div><span style="color:var(--muted)">Deductions:</span> <br><strong style="font-size:12px;color:var(--penalty)">${short(pen + gst + tds)}</strong></div>
+          <div><span style="color:var(--muted)">Filed Bills:</span> <br><strong style="font-size:12px">${reported} records</strong></div>
+        </div>
+        <h4 style="margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.3px;color:var(--muted)">Assigned Municipal Sites (Click to view charts):</h4>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          ${bmSites.length ? bmSites.map(s => {
+            const rec = records[s.id]?.[state.month];
+            const curStatus = rec && rec.reported ? rec.status : 'Not started Yet';
+            return `
+              <div onclick="openDrill(${s.id})" style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:.15s" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background='var(--surface)'">
+                <div>
+                  <strong style="font-size:13px;color:var(--brand)">📍 ${s.name}</strong>
+                  <div style="font-size:11px;color:var(--muted)">${s.region || ''} · Status: ${curStatus}</div>
+                </div>
+                <span style="font-size:12px;font-weight:700;color:var(--ink-2)">📊 View Analytics ›</span>
+              </div>
+            `;
+          }).join('') : '<div style="font-size:12px;color:var(--muted)">No sites assigned to this manager yet.</div>'}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderAll() { applyRole(); renderKpis(); renderCharts(); renderFunnel(); renderModes(); renderBillingManagers(); renderTable(); }
 
 /* ============================================================
    KPI cards
