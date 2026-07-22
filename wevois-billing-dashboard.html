@@ -833,7 +833,8 @@ async function loadData() {
   }
 
   const userRole = (currentUser?.role || '').toLowerCase();
-  const isUnrestricted = userRole === 'admin' || userRole === 'leadership' || userRole === 'vp' || userRole === 'ceo';
+  const emailLower = (currentUser?.email || '').toLowerCase();
+  const isUnrestricted = userRole === 'admin' || userRole === 'leadership' || userRole === 'vp' || userRole === 'ceo' || emailLower.includes('vp') || emailLower.includes('ceo') || emailLower.includes('admin');
 
   let userAssignedSiteIds = [];
   if (!isUnrestricted && currentUser?.id) {
@@ -909,10 +910,15 @@ function hideLoginScreen() {
 
 async function getProfile(userId, email) {
   try {
-    let q = sb.from('user_profiles').select('*');
-    if (userId && userId !== 'demo-id') q = q.eq('id', userId);
-    else if (email) q = q.eq('email', email);
-    const { data } = await q.maybeSingle();
+    let data = null;
+    if (email) {
+      const { data: d1 } = await sb.from('user_profiles').select('*').eq('email', email).maybeSingle();
+      data = d1;
+    }
+    if (!data && userId && userId !== 'demo-id') {
+      const { data: d2 } = await sb.from('user_profiles').select('*').eq('id', userId).maybeSingle();
+      data = d2;
+    }
     if (data && data.role) return data;
   } catch(e) {}
 
@@ -921,7 +927,7 @@ async function getProfile(userId, email) {
     const e = email.toLowerCase();
     if (e.includes('admin')) role = 'admin';
     else if (e.includes('billing')) role = 'billing_manager';
-    else if (e.includes('vp') || e.includes('ceo')) role = 'leadership';
+    else if (e.includes('vp') || e.includes('ceo') || e.includes('leadership')) role = 'leadership';
     else if (e.includes('accounts')) role = 'accounts';
     else role = 'site_manager';
   }
