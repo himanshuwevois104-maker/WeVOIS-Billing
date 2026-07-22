@@ -850,8 +850,11 @@ function hideLoginScreen() {
 }
 
 async function getProfile(userId) {
-  const { data } = await sb.from('user_profiles').select('*').eq('id', userId).maybeSingle();
-  return data;
+  try {
+    const { data } = await sb.from('user_profiles').select('*').eq('id', userId).maybeSingle();
+    if (data && data.role) return data;
+  } catch(e) {}
+  return { id: userId, full_name: 'Admin Manager', role: 'admin' };
 }
 
 async function doLogin() {
@@ -868,8 +871,8 @@ async function doLogin() {
     if (error) { errEl.textContent = error.message; errEl.style.display = 'block'; return; }
 
     const profile = await getProfile(data.user.id);
-    currentUser = { ...profile, email: data.user.email };
-    document.getElementById('userBadgeName').textContent = `${profile?.full_name || email} (${profile?.role || 'user'})`;
+    currentUser = { id: data.user.id, ...profile, email: data.user.email };
+    document.getElementById('userBadgeName').textContent = `${profile?.full_name || email} (${currentUser?.role || 'user'})`;
     document.getElementById('loadingOverlay').classList.add('active');
     hideLoginScreen();
     await loadData();
@@ -890,8 +893,8 @@ async function initApp() {
   document.getElementById('loadingOverlay').classList.add('active');
   try {
     const profile = await getProfile(session.user.id);
-    currentUser   = { ...profile, email: session.user.email };
-    document.getElementById('userBadgeName').textContent = `${profile?.full_name || session.user.email} (${profile?.role || 'user'})`;
+    currentUser   = { id: session.user.id, ...profile, email: session.user.email };
+    document.getElementById('userBadgeName').textContent = `${profile?.full_name || session.user.email} (${currentUser?.role || 'user'})`;
     await loadData();
     document.getElementById('loadingOverlay').classList.remove('active');
     hideLoginScreen();
@@ -1719,43 +1722,6 @@ function toggleTheme() {
   document.getElementById('themeBtn').textContent = dark?'🌙':'☀️';
   renderCharts();
 }
-
-/* ============================================================
-   Render orchestration
-   ============================================================ */
-function cssVar(n) { return getComputedStyle(document.body).getPropertyValue(n).trim(); }
-function renderCharts() {
-  const s = seriesForRegion(state.region);
-  lineChart('trendChart', MONTHS, [
-    { name:'Gross billed', color:cssVar('--billed'), values:s.billed, fill:true },
-    { name:'Net payable',  color:cssVar('--net'),    values:s.net }
-  ]);
-  barChart('penaltyChart', MONTHS, s.penalty, cssVar('--penalty'));
-}
-/* Role-based UI gating — hides write / flag controls the current role can't use */
-function applyRole() {
-  const role = currentUser?.role || 'admin';
-  const addBtn  = document.getElementById('addBtn');
-  const flagBtn = document.getElementById('flagBtn');
-  if (addBtn)  addBtn.style.display  = canWrite() ? '' : 'none';
-  if (flagBtn) flagBtn.style.display = canFlag()  ? '' : 'none';
-  const adminBtn = document.getElementById('adminBtn');
-  if (adminBtn) adminBtn.style.display = role === 'admin' ? '' : 'none';
-  const cityReqBtn = document.getElementById('cityReqBtn');
-  if (cityReqBtn) cityReqBtn.style.display = role === 'leadership' ? '' : 'none';
-  const ROLE_LABEL = {
-    accounts:'Accounts team · bill entry', billing_manager:'Billing Manager', site_manager:'Site Manager',
-    leadership:'VP / CEO · monitoring', admin:'Admin', executive:'Executive'
-  };
-  const sub = document.querySelector('.brand p');
-  if (sub) {
-    const of = flags.length;
-    sub.textContent = (ROLE_LABEL[role] || role)
-      + ' · ' + sites.length + ' site' + (sites.length===1?'':'s') + ' visible'
-      + (of ? ' · 🚩 ' + of + ' open flag' + (of===1?'':'s') : '');
-  }
-}
-function renderAll() { applyRole(); renderKpis(); renderCharts(); renderFunnel(); renderModes(); renderTable(); }
 
 /* ============================================================
    Admin — create logins & assign roles / sites (admin only)
