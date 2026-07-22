@@ -55,6 +55,8 @@ CREATE TABLE IF NOT EXISTS bills (
 
   billed        BIGINT NOT NULL DEFAULT 0,
   penalty       BIGINT NOT NULL DEFAULT 0,
+  gst           BIGINT DEFAULT 0,
+  tds           BIGINT DEFAULT 0,
 
   status        TEXT CHECK(status IN ('Submitted','Verified','Approved','Paid','On Hold')),
   payment_mode  TEXT CHECK(payment_mode IN ('Treasury','Self','PFMS','Cheque')),

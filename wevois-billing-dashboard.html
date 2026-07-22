@@ -1684,15 +1684,27 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
       else toast('Notesheet upload failed: ' + upErr.message);
     }
     // Upsert bill record in Supabase
-    const { data: result, error } = await sb.from('bills').upsert({
+    const payload = {
       site_id: sid, month_key: mk,
       billed, penalty, gst, tds, status,
-      payment_mode: status==='Paid' ? document.getElementById('fMode').value : (prev?.mode||null),
+      payment_mode: ['Paid','Cash','Bill Cleared'].includes(status) ? document.getElementById('fMode').value : (prev?.mode||null),
       notesheet_path,
       updated_by: (await sb.auth.getUser()).data.user?.id,
       ...timestamps
-    }, { onConflict: 'site_id,month_key' }).select().single();
-    if (error) { toast('Save failed: ' + error.message); return; }
+    };
+
+    let { data: result, error } = await sb.from('bills').upsert(payload, { onConflict: 'site_id,month_key' }).select().single();
+
+    if (error && error.message && (error.message.includes('gst') || error.message.includes('tds'))) {
+      delete payload.gst;
+      delete payload.tds;
+      const { data: res2, error: err2 } = await sb.from('bills').upsert(payload, { onConflict: 'site_id,month_key' }).select().single();
+      if (err2) { toast('Save failed: ' + err2.message); return; }
+      result = res2;
+    } else if (error) {
+      toast('Save failed: ' + error.message);
+      return;
+    }
     if (!records[sid]) records[sid]={};
     records[sid][mk] = transformBill(result);
     closeOverlays(); renderAll();
