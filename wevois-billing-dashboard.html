@@ -558,10 +558,13 @@
         <input type="text" id="fNet" readonly>
       </div>
       <div class="full">
-        <label for="fNote">Signed notesheet / letter (image)</label>
-        <input type="file" id="fNote" accept="image/*">
-        <p class="hint">Attach a photo of the final signed notesheet.</p>
-        <div class="note-preview" id="notePreview"><img id="notePreviewImg" alt="notesheet preview"></div>
+        <label for="fNote">Monthly Bill Document / Notesheet (PDF or Image)</label>
+        <input type="file" id="fNote" accept="image/*,application/pdf,.pdf">
+        <p class="hint">Upload a PDF or image of the monthly bill / signed notesheet.</p>
+        <div class="note-preview" id="notePreview" style="display:none;margin-top:8px">
+          <img id="notePreviewImg" alt="preview" style="max-width:100%;max-height:180px;display:none;border-radius:8px">
+          <div id="notePreviewPdf" style="display:none;padding:10px;background:var(--surface-2);border:1px dashed var(--brand);border-radius:8px;font-weight:600;font-size:13px;color:var(--brand)">📄 <span id="notePdfName">Monthly Bill PDF selected</span></div>
+        </div>
       </div>
     </div>
     <div class="form-actions">
@@ -671,15 +674,19 @@
   </div>
 </div>
 
-<!-- Notesheet viewer -->
+<!-- Notesheet / Monthly Bill Viewer -->
 <div class="overlay" id="noteOverlay">
-  <div class="modal">
+  <div class="modal wide" style="max-width:820px">
     <div class="modal-head">
-      <div><h3 id="noteTitle">Signed notesheet</h3><p id="noteSub"></p></div>
+      <div><h3 id="noteTitle">Monthly Bill Document</h3><p id="noteSub"></p></div>
       <button class="close" data-close>×</button>
     </div>
-    <div style="text-align:center;margin-top:12px">
-      <img id="noteImg" style="max-width:100%;border-radius:10px;border:1px solid var(--border)" alt="notesheet">
+    <div id="noteViewerContent" style="text-align:center;margin-top:12px">
+      <img id="noteImg" style="max-width:100%;border-radius:10px;border:1px solid var(--border);display:none" alt="bill document">
+      <iframe id="notePdfFrame" style="width:100%;height:520px;border:1px solid var(--border);border-radius:10px;display:none"></iframe>
+      <div id="notePdfLinkWrap" style="margin-top:12px;display:none">
+        <a id="notePdfLink" href="#" target="_blank" class="btn primary" style="display:inline-flex;align-items:center;gap:6px">📄 Open Full PDF in New Tab ↗</a>
+      </div>
     </div>
   </div>
 </div>
@@ -733,19 +740,7 @@ function getSiteSteps(site) {
 }
 
 const STAGES = ['Submitted','Verified','Approved','Paid'];
-const MODES  = ['Treasury','Self','PFMS','Cheque'];
-const DAY = 86400000, HOUR = 3600000;
-const NOW = Date.now();
-
-/* ---- Supabase client ---- */
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-let currentUser = null;
-let sites       = [];
-let records     = {};
-let flags       = [];
-let flagMap     = {};
-let drillSiteId = null;
-const WRITER_ROLES     = ['accounts','admin'];            // may create / edit bills
+const WRITER_ROLES     = ['billing_manager','site_manager','accounts','admin']; // may create / edit bills
 const LEADERSHIP_ROLES = ['leadership','admin'];          // VP & CEO — may raise flags
 const WORKFLOW_ROLES   = ['billing_manager','site_manager','admin'];
 const canWrite          = () => WRITER_ROLES.includes(currentUser?.role);
@@ -842,11 +837,8 @@ function hideLoginScreen() {
 }
 
 async function getProfile(userId) {
-  try {
-    const { data } = await sb.from('user_profiles').select('*').eq('id', userId).maybeSingle();
-    if (data) return data;
-  } catch(e) {}
-  return { full_name: 'Admin Manager', role: 'admin' };
+  const { data } = await sb.from('user_profiles').select('*').eq('id', userId).maybeSingle();
+  return data;
 }
 
 async function doLogin() {
@@ -977,104 +969,165 @@ function ageingCell(rec) {
 /* ============================================================
    State
    ============================================================ */
-const state = { month: MONTHS[MONTHS.length-1].key, region: 'all', status: 'all', search: '', sort: 'net', dir: -1 };
+const state = { month: MONTHS[MONTHS.length-1].key, region:'all', status:'all', search:'', sort:'name', dir:1 };
 
-function monthTotals(monthKey, region) {
-  let billed=0, penalty=0, net=0, paidNet=0, reported=0, total=0, stuck=0;
+function monthTotals(mKey, region) {
+  let sub=0, pen=0, gst=0, tds=0, paid=0, totalCount=0, reportedCount=0, stuck=0;
   const stageCount = { Submitted:0, Verified:0, Approved:0, Paid:0, 'On Hold':0 };
   const stageAmt   = { Submitted:0, Verified:0, Approved:0, Paid:0, 'On Hold':0 };
-  const modeAmt    = { Treasury:0, Self:0, PFMS:0, Cheque:0 };
   const modeCount  = { Treasury:0, Self:0, PFMS:0, Cheque:0 };
+  const modeAmt    = { Treasury:0, Self:0, PFMS:0, Cheque:0 };
+
   sites.forEach(s => {
     if (region !== 'all' && s.region !== region) return;
-    total++;
-    const rec = records[s.id]?.[monthKey];
-    if (!rec || !rec.reported) return;
-    reported++; billed += rec.billed; penalty += rec.penalty; net += rec.net;
-    stageCount[rec.status]++; stageAmt[rec.status] += rec.net;
-    if (rec.status === 'Paid') {
-      paidNet += rec.net;
-      if (rec.mode) { modeAmt[rec.mode] += rec.net; modeCount[rec.mode]++; }
-    } else {
-      const a = ageDays(rec); if (a != null && a > 7) stuck++;
+    totalCount++;
+    const r = records[s.id]?.[mKey];
+    if (r && r.reported) {
+      reportedCount++;
+      sub += r.billed; pen += r.penalty; gst += r.gst; tds += r.tds;
+      if (r.status === 'Paid') paid += r.net;
+      if (r.status && stageCount[r.status] != null) {
+        stageCount[r.status]++; stageAmt[r.status] += r.net;
+      }
+      if (r.status === 'Paid' && r.mode && modeCount[r.mode] != null) {
+        modeCount[r.mode]++; modeAmt[r.mode] += r.net;
+      }
+      const age = ageDays(r);
+      if (r.status !== 'Paid' && age != null && age > 7) stuck++;
     }
   });
-  return { billed, penalty, net, paidNet, reported, total, stuck, stageCount, stageAmt, modeAmt, modeCount };
+  return { sub, pen, gst, tds, net: sub - pen - gst - tds, paid, totalCount, reportedCount, stageCount, stageAmt, modeCount, modeAmt, stuck };
 }
 
 /* ============================================================
-   KPI render
+   Renderers
    ============================================================ */
-function prevMonthKey(mk) { const i = MONTHS.findIndex(m => m.key === mk); return i > 0 ? MONTHS[i-1].key : null; }
-function deltaHtml(cur, prev, goodUp=true) {
-  if (prev === 0 || prev == null) return `<div class="delta flat">— no prior</div>`;
-  const d = (cur-prev)/Math.abs(prev);
-  if (Math.abs(d) < 0.0005) return `<div class="delta flat">0.0% vs prev</div>`;
-  const up = d > 0; const good = (up === goodUp);
-  return `<div class="delta ${good?'up':'down'}">${up?'▲':'▼'} ${Math.abs(d*100).toFixed(1)}% vs prev</div>`;
+function applyRole() {
+  const role = currentUser?.role || 'accounts';
+  const addBtn  = document.getElementById('addBtn');
+  const flagBtn = document.getElementById('flagBtn');
+  if (addBtn)  addBtn.style.display  = canWrite() ? '' : 'none';
+  if (flagBtn) flagBtn.style.display = canFlag()  ? '' : 'none';
+  const adminBtn = document.getElementById('adminBtn');
+  if (adminBtn) adminBtn.style.display = role === 'admin' ? '' : 'none';
+  const cityReqBtn = document.getElementById('cityReqBtn');
+  if (cityReqBtn) cityReqBtn.style.display = role === 'leadership' ? '' : 'none';
+  const ROLE_LABEL = {
+    accounts:'Accounts team · bill entry', billing_manager:'Billing Manager', site_manager:'Site Manager',
+    leadership:'VP / CEO · monitoring', admin:'Admin', executive:'Executive'
+  };
+  const sub = document.querySelector('.brand p');
+  if (sub) {
+    const of = flags.length;
+    sub.textContent = (ROLE_LABEL[role] || role)
+      + ' · ' + sites.length + ' site' + (sites.length===1?'':'s') + ' visible'
+      + (of ? ' · 🚩 ' + of + ' open flag' + (of===1?'':'s') : '');
+  }
 }
+function renderAll() { applyRole(); renderKpis(); renderCharts(); renderFunnel(); renderModes(); renderTable(); }
+
+/* ============================================================
+   KPI cards
+   ============================================================ */
 function renderKpis() {
-  const t  = monthTotals(state.month, state.region);
-  const pk = prevMonthKey(state.month);
-  const p  = pk ? monthTotals(pk, state.region) : null;
-  const penRate = t.billed ? t.penalty/t.billed : 0;
-  const colRate = t.net    ? t.paidNet/t.net     : 0;
-  const tiles = [
-    { lab:'Gross billed',    val:short(t.billed),  sub:MONTHS.find(m=>m.key===state.month).label, accent:'var(--billed)', delta:deltaHtml(t.billed,p?.billed,true) },
-    { lab:'Penalties',       val:short(t.penalty), sub:pct(penRate)+' of gross',                  accent:'var(--penalty)',delta:deltaHtml(t.penalty,p?.penalty,false) },
-    { lab:'Net payable',     val:short(t.net),     sub:'after deductions',                         accent:'var(--net)',   delta:deltaHtml(t.net,p?.net,true) },
-    { lab:'Collected (Paid)',val:short(t.paidNet), sub:pct(colRate)+' of net cleared',             accent:'var(--good)', delta:deltaHtml(colRate,p?(p.net?p.paidNet/p.net:0):null,true) },
-    { lab:'Sites reported',  val:t.reported+' / '+t.total, sub:(t.total-t.reported)+' pending entry', accent:'var(--stage-2)',
-      delta:`<div class="delta ${t.reported===t.total?'up':'flat'}">${pct(t.total?t.reported/t.total:0)} in</div>` }
-  ];
-  document.getElementById('kpis').innerHTML = tiles.map(k =>
-    `<div class="kpi"><div class="accent" style="background:${k.accent}"></div>
-       <div class="lab">${k.lab}</div>
-       <div class="val">${k.val}</div>
-       <div class="sub">${k.sub}</div>
-       ${k.delta}
-     </div>`
-  ).join('');
+  const cur  = monthTotals(state.month, state.region);
+  const prevIdx = MONTHS.findIndex(m => m.key === state.month) - 1;
+  const prev = prevIdx >= 0 ? monthTotals(MONTHS[prevIdx].key, state.region) : null;
+
+  const dSub  = prev && prev.sub  ? (cur.sub  - prev.sub)  / prev.sub  : null;
+  const dPen  = prev && prev.pen  ? (cur.pen  - prev.pen)  / prev.pen  : null;
+  const dNet  = prev && prev.net  ? (cur.net  - prev.net)  / prev.net  : null;
+  const dPaid = prev && prev.paid ? (cur.paid - prev.paid) / prev.paid : null;
+
+  document.getElementById('kGross').textContent = short(cur.sub);
+  document.getElementById('kPen').textContent   = short(cur.pen);
+  document.getElementById('kNet').textContent   = short(cur.net);
+  document.getElementById('kPaid').textContent  = short(cur.paid);
+
+  document.getElementById('dGross').innerHTML = fmtDelta(dSub,  true);
+  document.getElementById('dPen').innerHTML   = fmtDelta(dPen,  false); // lower penalty = good
+  document.getElementById('dNet').innerHTML   = fmtDelta(dNet,  true);
+  document.getElementById('dPaid').innerHTML  = fmtDelta(dPaid, true);
+
+  const repRate = cur.totalCount ? cur.reportedCount / cur.totalCount : 0;
+  document.getElementById('kRep').textContent = `${cur.reportedCount} / ${cur.totalCount}`;
+  document.getElementById('dRep').textContent = `(${pct(repRate)} sites filed)`;
+}
+function fmtDelta(d, flipGood) {
+  if (d == null) return '—';
+  const p = (Math.abs(d)*100).toFixed(1) + '%';
+  if (Math.abs(d) < 0.001) return `<span class="delta flat">0.0% MoM</span>`;
+  const up = d > 0;
+  const isGood = flipGood ? up : !up;
+  const cls = isGood ? 'good' : 'bad';
+  const sym = up ? '▲' : '▼';
+  return `<span class="delta ${cls}">${sym} ${p} MoM</span>`;
 }
 
 /* ============================================================
-   Line chart
+   Charts (SVG)
    ============================================================ */
-function seriesForRegion(region) {
-  const billed=[], net=[], penalty=[];
-  MONTHS.forEach(m => { const t = monthTotals(m.key, region); billed.push(t.billed); net.push(t.net); penalty.push(t.penalty); });
-  return { billed, net, penalty };
+function renderCharts() {
+  const mList = MONTHS;
+  const bList = mList.map(m => monthTotals(m.key, state.region));
+  const gross = bList.map(b => b.sub);
+  const net   = bList.map(b => b.net);
+  const pen   = bList.map(b => b.pen);
+
+  lineChart('trendChart', mList, [
+    { name:'Gross billed', color:'var(--billed)', values:gross, fill:true },
+    { name:'Net payable',  color:'var(--net)',    values:net }
+  ]);
+  barChart('penaltyChart', mList, pen, 'var(--penalty)');
 }
-function niceMax(v) {
-  if (v <= 0) return 100000;
-  const pow = Math.pow(10, Math.floor(Math.log10(v)));
-  const n = v/pow;
-  const step = n<=1?1:n<=2?2:n<=5?5:10;
-  return step*pow;
+
+function niceMax(val) {
+  if (val <= 0) return 10;
+  const exp = Math.floor(Math.log10(val));
+  const frac = val / Math.pow(10, exp);
+  let niceFrac = 10;
+  if (frac <= 1.2) niceFrac = 1.2;
+  else if (frac <= 1.5) niceFrac = 1.5;
+  else if (frac <= 2.0) niceFrac = 2.0;
+  else if (frac <= 2.5) niceFrac = 2.5;
+  else if (frac <= 5.0) niceFrac = 5.0;
+  return niceFrac * Math.pow(10, exp);
 }
+
 function lineChart(elId, months, series) {
-  const W=760,H=300,pl=64,pr=18,pt=16,pb=34;
-  const iw=W-pl-pr, ih=H-pt-pb;
-  const maxV = niceMax(Math.max(...series.flatMap(s=>s.values),1)*1.08);
-  const x = i => pl + (months.length===1 ? iw/2 : iw*i/(months.length-1));
-  const y = v => pt + ih - (v/maxV)*ih;
-  const gl=5; let g='';
-  for (let i=0;i<=gl;i++) {
-    const val=maxV*i/gl, yy=y(val);
+  const W = 760, H = 250, pl = 64, pr = 16, pt = 14, pb = 32;
+  const iw = W - pl - pr, ih = H - pt - pb;
+  const allV = series.flatMap(s => s.values);
+  const maxV = niceMax(Math.max(...allV, 1) * 1.12);
+
+  const x = i => pl + (iw / (months.length - 1)) * i;
+  const y = v => pt + ih - (v / maxV) * ih;
+
+  const gl = 4; let g = '';
+  for (let i = 0; i <= gl; i++) {
+    const val = maxV * i / gl, yy = y(val);
     g += `<line class="gridline" x1="${pl}" y1="${yy}" x2="${W-pr}" y2="${yy}"/>`;
     g += `<text class="tick" x="${pl-8}" y="${yy+3}" text-anchor="end">${short(val).replace('₹','')}</text>`;
   }
-  let xl='';
-  months.forEach((m,i) => { if (months.length>12&&i%2) return; xl += `<text class="tick" x="${x(i)}" y="${H-12}" text-anchor="middle">${m.short}</text>`; });
-  let paths='';
+
+  let xl = '';
+  months.forEach((m, i) => { xl += `<text class="tick" x="${x(i)}" y="${H-12}" text-anchor="middle">${m.short}</text>`; });
+
+  let paths = '';
   series.forEach(s => {
-    const dLine = s.values.map((v,i) => (i?'L':'M')+x(i)+' '+y(v)).join(' ');
-    if (s.fill) paths += `<path d="${dLine} L${x(months.length-1)} ${y(0)} L${x(0)} ${y(0)} Z" fill="${s.color}" opacity="0.08"/>`;
-    paths += `<path d="${dLine}" fill="none" stroke="${s.color}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`;
-    paths += s.values.map((v,i) => `<circle cx="${x(i)}" cy="${y(v)}" r="3.4" fill="var(--surface)" stroke="${s.color}" stroke-width="2"/>`).join('');
+    const pts = s.values.map((v, i) => `${x(i)},${y(v)}`).join(' L ');
+    if (s.fill) {
+      const area = `M ${x(0)},${pt+ih} L ${pts} L ${x(months.length-1)},${pt+ih} Z`;
+      paths += `<path d="${area}" fill="${s.color}" fill-opacity="0.08"/>`;
+    }
+    paths += `<path d="M ${pts}" fill="none" stroke="${s.color}" stroke-width="2.5"/>`;
+    s.values.forEach((v, i) => {
+      paths += `<circle cx="${x(i)}" cy="${y(v)}" r="3.5" fill="${s.color}"/>`;
+    });
   });
-  let hits='';
-  months.forEach((m,i) => {
+
+  let hits = '';
+  months.forEach((m, i) => {
     const cx=x(i), bw=iw/months.length;
     hits += `<rect x="${cx-bw/2}" y="${pt}" width="${bw}" height="${ih}" fill="transparent" data-i="${i}" class="hitcol" style="cursor:crosshair"/>`;
   });
@@ -1267,7 +1320,7 @@ function renderTable() {
       <td title="${dateTitle(r.rec)}">${statusBadge(r.status, r.id)} ${canManageWorkflow() ? `<span class="note-chip" data-editwf="${r.id}" style="margin-left:4px" title="Customize billing flow for this site">⚙️ Flow</span>` : ''}${(r.status==='Paid'||r.status==='Bill Cleared'||r.status==='Cash')&&r.mode?`<div class="site-region" style="margin-top:2px">via ${r.mode}</div>`:''}</td>
       <td>${ageingCell(r.rec)}</td>
       <td>${ageCell(r.rec)}</td>
-      <td>${r.note?`<span class="note-chip" data-note="${r.id}">📎 View</span>`:(r.status?'<span class="note-none">— none</span>':'<span class="note-none">—</span>')}</td>
+      <td>${r.note?`<span class="note-chip" data-note="${r.id}">${r.note.toLowerCase().endsWith('.pdf') ? '📄 PDF' : '📎 View'}</span>`:(r.status?'<span class="note-none">— none</span>':'<span class="note-none">—</span>')}</td>
     </tr>`
   ).join('');
   document.querySelectorAll('#tblBody tr').forEach(tr => {
@@ -1325,10 +1378,10 @@ async function openDrill(siteId) {
         <td class="num" style="color:${r.reported&&r.gst?'var(--penalty)':'inherit'}">${r.reported?(r.gst?'−'+rupees(r.gst):'₹0'):'—'}</td>
         <td class="num" style="color:${r.reported&&r.tds?'var(--penalty)':'inherit'}">${r.reported?(r.tds?'−'+rupees(r.tds):'₹0'):'—'}</td>
         <td class="num">${r.reported?rupees(r.net):'—'}</td>
-        <td title="${dateTitle(r)}">${statusBadge(r.reported?r.status:null)}${r.reported&&r.status==='Paid'&&r.mode?`<div class="site-region" style="margin-top:2px">via ${r.mode}</div>`:''}</td>
+        <td title="${dateTitle(r)}">${statusBadge(r.reported?r.status:null, siteId)}${r.reported&&r.status==='Paid'&&r.mode?`<div class="site-region" style="margin-top:2px">via ${r.mode}</div>`:''}</td>
         <td>${ageingCell(r)}</td>
         <td>${ageCell(r)}</td>
-        <td>${r.reported&&r.note?`<span class="note-chip" data-note2="${siteId}" data-mk="${m.key}">📎 View</span>`:'<span class="note-none">—</span>'}</td></tr>`;
+        <td>${r.reported&&r.note?`<span class="note-chip" data-note2="${siteId}" data-mk="${m.key}">${r.note.toLowerCase().endsWith('.pdf') ? '📄 PDF' : '📎 View'}</span>`:'<span class="note-none">—</span>'}</td></tr>`;
     }).join('') + `</tbody>`;
   document.querySelectorAll('#drillTable .note-chip').forEach(c => {
     c.addEventListener('click', () => openNote(+c.dataset.note2, c.dataset.mk));
@@ -1359,22 +1412,42 @@ async function raiseFlag() {
 }
 
 /* ============================================================
-   Notesheet viewer
+   Notesheet / Monthly Bill viewer
    ============================================================ */
 async function openNote(siteId, mk) {
   mk = mk || state.month;
   const r = records[siteId]?.[mk];
   const s = sites.find(x => x.id === siteId);
-  if (!r || !r.note) { toast('No notesheet attached for this bill'); return; }
-  document.getElementById('noteTitle').textContent = 'Signed notesheet — ' + (s?.name || '');
-  document.getElementById('noteSub').textContent   = MONTHS.find(m => m.key === mk)?.label || mk;
-  document.getElementById('noteImg').src = '';
-  document.getElementById('noteImg').alt = 'Loading…';
+  if (!r || !r.note) { toast('No monthly bill attached for this record'); return; }
+  
+  document.getElementById('noteTitle').textContent = 'Monthly Bill Document — ' + (s?.name || '');
+  document.getElementById('noteSub').textContent   = (s?.region || '') + ' · ' + (MONTHS.find(m => m.key === mk)?.label || mk);
+  
+  const imgEl = document.getElementById('noteImg');
+  const pdfFrame = document.getElementById('notePdfFrame');
+  const pdfLinkWrap = document.getElementById('notePdfLinkWrap');
+  const pdfLink = document.getElementById('notePdfLink');
+  
+  imgEl.style.display = 'none';
+  pdfFrame.style.display = 'none';
+  pdfLinkWrap.style.display = 'none';
   openOverlay('noteOverlay');
+
   const { data, error } = await sb.storage.from('notesheets').createSignedUrl(r.note, 3600);
-  if (error || !data?.signedUrl) { toast('Could not load notesheet image'); return; }
-  document.getElementById('noteImg').src = data.signedUrl;
-  document.getElementById('noteImg').alt = 'Signed notesheet';
+  if (error || !data?.signedUrl) { toast('Could not load bill document: ' + (error?.message || 'Url failed')); return; }
+
+  const url = data.signedUrl;
+  const isPdf = r.note.toLowerCase().endsWith('.pdf') || url.toLowerCase().includes('.pdf');
+
+  if (isPdf) {
+    pdfFrame.style.display = 'block';
+    pdfFrame.src = url;
+    pdfLink.href = url;
+    pdfLinkWrap.style.display = 'block';
+  } else {
+    imgEl.style.display = 'inline-block';
+    imgEl.src = url;
+  }
 }
 
 /* ============================================================
@@ -1394,14 +1467,30 @@ function hideTip() { tip.style.opacity=0; }
    ============================================================ */
 let pendingNoteFile = null;
 
-function syncModeField() {
-  const paid = document.getElementById('fStatus').value === 'Paid';
-  document.getElementById('fMode').disabled = !paid;
-  document.getElementById('fModeHint').textContent = paid ? 'Cash-branch settlement mode for this payment.' : 'Enabled when stage is Paid.';
+function updateFormStatusOptions() {
+  const sid = +document.getElementById('fSite').value;
+  const s = sites.find(x => x.id === sid);
+  const steps = getSiteSteps(s);
+  const curVal = document.getElementById('fStatus').value;
+  document.getElementById('fStatus').innerHTML =
+    steps.map(st => `<option value="${st}">${st}</option>`).join('') +
+    `<option value="On Hold">On Hold</option>`;
+  if ([...document.getElementById('fStatus').options].some(o => o.value === curVal)) {
+    document.getElementById('fStatus').value = curVal;
+  }
 }
+
+function syncModeField() {
+  const paid = ['Paid','Cash','Bill Cleared'].includes(document.getElementById('fStatus').value);
+  document.getElementById('fMode').disabled = !paid;
+  document.getElementById('fModeHint').textContent = paid ? 'Cash-branch settlement mode for this payment.' : 'Enabled when stage is Cash or Bill Cleared.';
+}
+
 function fillFormSelectors() {
   document.getElementById('fSite').innerHTML  = sites.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
   document.getElementById('fMonth').innerHTML = MONTHS.slice().reverse().map(m => `<option value="${m.key}">${m.label}</option>`).join('');
+  document.getElementById('fSite').addEventListener('change', updateFormStatusOptions);
+
   const upd = () => {
     const b=+document.getElementById('fBilled').value||0, p=+document.getElementById('fPenalty').value||0,
           g=+document.getElementById('fGst').value||0, t=+document.getElementById('fTds').value||0;
@@ -1412,14 +1501,29 @@ function fillFormSelectors() {
   document.getElementById('fGst').addEventListener('input',upd);
   document.getElementById('fTds').addEventListener('input',upd);
   document.getElementById('fStatus').addEventListener('change',syncModeField);
+  
   document.getElementById('fNote').addEventListener('change', e => {
-    const f=e.target.files[0]; if (!f) return;
+    const f = e.target.files[0];
+    if (!f) return;
     pendingNoteFile = f;
-    const rd=new FileReader();
-    rd.onload=()=>{ const pv=document.getElementById('notePreview'); pv.style.display='block'; document.getElementById('notePreviewImg').src=rd.result; };
-    rd.readAsDataURL(f);
+    const isPdf = f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf');
+    const pv = document.getElementById('notePreview');
+    const imgEl = document.getElementById('notePreviewImg');
+    const pdfEl = document.getElementById('notePreviewPdf');
+    pv.style.display = 'block';
+    if (isPdf) {
+      imgEl.style.display = 'none';
+      pdfEl.style.display = 'block';
+      document.getElementById('notePdfName').textContent = 'PDF: ' + f.name + ' (' + Math.round(f.size / 1024) + ' KB)';
+    } else {
+      pdfEl.style.display = 'none';
+      const rd = new FileReader();
+      rd.onload = () => { imgEl.style.display = 'block'; imgEl.src = rd.result; };
+      rd.readAsDataURL(f);
+    }
   });
 }
+
 function openForm() {
   pendingNoteFile = null;
   document.getElementById('notePreview').style.display='none';
@@ -1428,6 +1532,7 @@ function openForm() {
   ['fBilled','fPenalty','fGst','fTds','fNet'].forEach(id=>document.getElementById(id).value='');
   const today=new Date();
   document.getElementById('fDate').value = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+  updateFormStatusOptions();
   syncModeField();
   openOverlay('formOverlay');
 }
