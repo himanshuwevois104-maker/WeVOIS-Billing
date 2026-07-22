@@ -808,13 +808,34 @@ function transformBill(b) {
 /* ---- Load all data from Supabase ---- */
 async function loadData() {
   const keys = MONTHS.map(m => m.key);
+
+  if (currentUser?.email) {
+    const prof = await getProfile(currentUser.id, currentUser.email);
+    if (prof && prof.id) {
+      currentUser = { ...currentUser, ...prof };
+    }
+  }
+
   const isUnrestricted = currentUser?.role === 'admin' || currentUser?.role === 'leadership';
 
-  const [{ data: sitesData, error: se }, { data: billsData, error: be }, { data: flagsData }, { data: asgData }] = await Promise.all([
+  let userAssignedSiteIds = [];
+  if (!isUnrestricted && currentUser?.id) {
+    let { data: asg } = await sb.from('site_assignments').select('site_id').eq('user_id', currentUser.id);
+    if ((!asg || asg.length === 0) && currentUser.email) {
+      const { data: prof } = await sb.from('user_profiles').select('id').eq('email', currentUser.email).maybeSingle();
+      if (prof?.id) {
+        currentUser.id = prof.id;
+        const { data: asg2 } = await sb.from('site_assignments').select('site_id').eq('user_id', prof.id);
+        asg = asg2;
+      }
+    }
+    userAssignedSiteIds = (asg || []).map(a => a.site_id);
+  }
+
+  const [{ data: sitesData, error: se }, { data: billsData, error: be }, { data: flagsData }] = await Promise.all([
     sb.from('sites').select('*').order('region').order('name'),
     sb.from('bills').select('*').in('month_key', keys),
-    sb.from('bill_flags').select('*').eq('status', 'open'),
-    isUnrestricted ? Promise.resolve({ data: null }) : sb.from('site_assignments').select('site_id').eq('user_id', currentUser.id)
+    sb.from('bill_flags').select('*').eq('status', 'open')
   ]);
   if (se) { toast('Failed to load sites: ' + se.message); return; }
   if (be) { toast('Failed to load bills: ' + be.message); return; }
@@ -828,7 +849,7 @@ async function loadData() {
   }));
 
   if (!isUnrestricted) {
-    const assignedSet = new Set((asgData || []).map(a => a.site_id));
+    const assignedSet = new Set(userAssignedSiteIds);
     sites = allSites.filter(s => assignedSet.has(s.id));
   } else {
     sites = allSites;
