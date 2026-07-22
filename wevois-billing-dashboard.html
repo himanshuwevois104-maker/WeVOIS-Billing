@@ -1541,12 +1541,14 @@ async function loadUsers() {
   tbl.innerHTML = `<thead><tr><th>Name</th><th>Email / login</th><th>Role</th><th>Sites</th></tr></thead><tbody>` +
     (profs || []).map(p => {
       const ids = byUser[p.id] || [];
-      const scoped = p.role==='billing_manager' || p.role==='site_manager';
+      const isAdmin = p.role === 'admin' || p.role === 'leadership';
+      const displayName = p.full_name || p.email?.split('@')[0] || 'User';
+      const displayEmail = p.email || '—';
       return `<tr>
-        <td>${p.full_name || '—'}</td>
-        <td class="site-region">${p.email || '—'}</td>
+        <td><strong>${displayName}</strong></td>
+        <td class="site-region">${displayEmail}</td>
         <td><select data-uid="${p.id}" class="roleSel" style="min-width:150px">${roleOptionsHtml(p.role)}</select></td>
-        <td>${scoped ? `${ids.length} site${ids.length===1?'':'s'} <span class="note-chip" data-editsites="${p.id}">✎ edit</span>` : '<span class="note-none">all sites</span>'}</td>
+        <td>${isAdmin ? '<span class="note-none">all sites (admin)</span>' : `${ids.length} site${ids.length===1?'':'s'} <span class="note-chip" data-editsites="${p.id}">✎ edit sites</span>`}</td>
       </tr>`;
     }).join('') + `</tbody>`;
   tbl.querySelectorAll('.roleSel').forEach(sel => sel.addEventListener('change', () => saveRole(sel.dataset.uid, sel.value)));
@@ -1564,6 +1566,7 @@ function editUserSites(uid) {
   const ids = (window.__asgByUser || {})[uid] || [];
   siteCheckboxes('seSites', ids);
   document.getElementById('siteEditor').style.display = 'block';
+  document.getElementById('siteEditor').scrollIntoView({ behavior: 'smooth' });
 }
 
 async function saveUserSites() {
@@ -1571,7 +1574,7 @@ async function saveUserSites() {
   const ids = checkedSiteIds('seSites');
   await sb.from('site_assignments').delete().eq('user_id', editingSitesFor);
   if (ids.length) await sb.from('site_assignments').insert(ids.map(site_id => ({ user_id: editingSitesFor, site_id })));
-  toast('Sites updated');
+  toast('Sites updated successfully');
   document.getElementById('siteEditor').style.display = 'none';
   editingSitesFor = null;
   loadUsers();
@@ -1584,7 +1587,7 @@ async function createUserAdmin() {
   const role      = document.getElementById('auRole').value;
   if (!email || !password)   { toast('Enter email and password'); return; }
   if (password.length < 6)   { toast('Password must be 6+ characters'); return; }
-  const siteIds = ['billing_manager','site_manager'].includes(role) ? checkedSiteIds('auSites') : [];
+  const siteIds = checkedSiteIds('auSites');
   const btn = document.getElementById('auCreate'); btn.textContent = 'Creating…'; btn.disabled = true;
   try {
     // Step 1: Create the user via Supabase Auth signUp
@@ -1598,13 +1601,13 @@ async function createUserAdmin() {
     const newUserId = signUpData?.user?.id;
     if (!newUserId) { toast('User created — confirm email in Supabase Auth dashboard'); loadUsers(); return; }
 
-    // Step 2: Update profile with correct role and full_name (trigger creates it as 'executive' by default)
+    // Step 2: Update profile with correct role, full_name, and email
     const { error: profileErr } = await sb.from('user_profiles')
-      .upsert({ id: newUserId, full_name: full_name || email.split('@')[0], role })
+      .upsert({ id: newUserId, full_name: full_name || email.split('@')[0], email, role })
       .eq('id', newUserId);
-    if (profileErr) { toast('User created but role update failed: ' + profileErr.message); }
+    if (profileErr) { toast('User created but profile update failed: ' + profileErr.message); }
 
-    // Step 3: Assign sites if executive role
+    // Step 3: Assign selected sites/cities to the new user
     if (siteIds.length) {
       await sb.from('site_assignments').delete().eq('user_id', newUserId);
       await sb.from('site_assignments').insert(siteIds.map(site_id => ({ user_id: newUserId, site_id })));
@@ -1630,6 +1633,8 @@ async function refreshSites() {
   rs.innerHTML = `<option value="all">All regions</option>` + regions.map(r => `<option>${r}</option>`).join('');
   rs.value = [...rs.options].some(o => o.value === cur) ? cur : 'all';
   if (rs.value === 'all') state.region = 'all';
+  const curChecked = checkedSiteIds('auSites');
+  siteCheckboxes('auSites', curChecked);
   renderAll();
 }
 

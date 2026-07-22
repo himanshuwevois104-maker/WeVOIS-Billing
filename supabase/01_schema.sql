@@ -5,8 +5,8 @@
 CREATE TABLE IF NOT EXISTS user_profiles (
   id        UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   full_name TEXT NOT NULL,
-  role      TEXT NOT NULL DEFAULT 'executive'
-            CHECK(role IN ('executive','admin')),
+  email     TEXT,
+  role      TEXT NOT NULL DEFAULT 'executive',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -14,13 +14,14 @@ CREATE TABLE IF NOT EXISTS user_profiles (
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
-  INSERT INTO user_profiles (id, full_name, role)
+  INSERT INTO user_profiles (id, full_name, email, role)
   VALUES (
     NEW.id,
     COALESCE(NEW.raw_user_meta_data->>'full_name', split_part(NEW.email,'@',1)),
+    NEW.email,
     'executive'
   )
-  ON CONFLICT (id) DO NOTHING;
+  ON CONFLICT (id) DO UPDATE SET email = EXCLUDED.email;
   RETURN NEW;
 END;
 $$;
