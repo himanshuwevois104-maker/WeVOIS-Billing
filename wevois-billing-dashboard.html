@@ -1683,15 +1683,26 @@ function openForm() {
   const tdsWrap  = document.getElementById('fTds')?.closest('div');
   const modeWrap = document.getElementById('fMode')?.closest('div');
 
+  const isSiteManager = currentUser?.role === 'site_manager';
+
   if (isBillingManager) {
     if (roleHint) {
       roleHint.style.display = 'block';
-      roleHint.textContent = 'ℹ️ Billing Manager Mode: Enter Gross Bill Amount & upload Bill PDF. Deductions (Penalty, GST, TDS) and final approvals will be completed by Site Manager / Accounts team.';
+      roleHint.textContent = 'ℹ️ Billing Manager Mode: Enter Gross Bill Amount & upload Bill PDF. Stage is set to Bill Submmited.';
     }
     if (penWrap)  penWrap.style.display  = 'none';
     if (gstWrap)  gstWrap.style.display  = 'none';
     if (tdsWrap)  tdsWrap.style.display  = 'none';
     if (modeWrap) modeWrap.style.display = 'none';
+  } else if (isSiteManager) {
+    if (roleHint) {
+      roleHint.style.display = 'block';
+      roleHint.textContent = '🏗️ Site Manager Mode: Select current stage / person holding the bill at present, enter deductions (Penalty, GST, TDS), and save updates.';
+    }
+    if (penWrap)  penWrap.style.display  = '';
+    if (gstWrap)  gstWrap.style.display  = '';
+    if (tdsWrap)  tdsWrap.style.display  = '';
+    if (modeWrap) modeWrap.style.display = '';
   } else {
     if (roleHint) roleHint.style.display = 'none';
     if (penWrap)  penWrap.style.display  = '';
