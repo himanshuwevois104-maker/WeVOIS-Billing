@@ -345,6 +345,10 @@
       <select id="regionSel"><option value="all">All regions</option></select>
     </div>
     <div class="field">
+      <label for="siteSel">Site</label>
+      <select id="siteSel"><option value="all">All sites</option></select>
+    </div>
+    <div class="field">
       <label for="statusSel">Stage / status</label>
       <select id="statusSel">
         <option value="all">All stages</option>
@@ -1037,9 +1041,9 @@ function ageingCell(rec) {
 /* ============================================================
    State
    ============================================================ */
-const state = { month: MONTHS[MONTHS.length-1].key, region:'all', status:'all', search:'', sort:'name', dir:1 };
+const state = { month: MONTHS[MONTHS.length-1].key, region:'all', siteId:'all', status:'all', search:'', sort:'name', dir:1 };
 
-function monthTotals(mKey, region) {
+function monthTotals(mKey, region, siteId) {
   let sub=0, pen=0, gst=0, tds=0, paid=0, totalCount=0, reportedCount=0, stuck=0;
   const stageCount = { Submitted:0, Verified:0, Approved:0, Paid:0, 'On Hold':0 };
   const stageAmt   = { Submitted:0, Verified:0, Approved:0, Paid:0, 'On Hold':0 };
@@ -1047,7 +1051,8 @@ function monthTotals(mKey, region) {
   const modeAmt    = { Treasury:0, Self:0, PFMS:0, Cheque:0 };
 
   sites.forEach(s => {
-    if (region !== 'all' && s.region !== region) return;
+    if (region && region !== 'all' && s.region !== region) return;
+    if (siteId && siteId !== 'all' && s.id !== +siteId) return;
     totalCount++;
     const r = records[s.id]?.[mKey];
     if (r && r.reported) {
@@ -1098,9 +1103,9 @@ function renderAll() { applyRole(); renderKpis(); renderCharts(); renderFunnel()
    KPI cards
    ============================================================ */
 function renderKpis() {
-  const cur  = monthTotals(state.month, state.region);
+  const cur  = monthTotals(state.month, state.region, state.siteId);
   const prevIdx = MONTHS.findIndex(m => m.key === state.month) - 1;
-  const prev = prevIdx >= 0 ? monthTotals(MONTHS[prevIdx].key, state.region) : null;
+  const prev = prevIdx >= 0 ? monthTotals(MONTHS[prevIdx].key, state.region, state.siteId) : null;
 
   const dSub  = prev && prev.sub  ? (cur.sub  - prev.sub)  / prev.sub  : null;
   const dPen  = prev && prev.pen  ? (cur.pen  - prev.pen)  / prev.pen  : null;
@@ -1137,7 +1142,7 @@ function fmtDelta(d, flipGood) {
    ============================================================ */
 function renderCharts() {
   const mList = MONTHS;
-  const bList = mList.map(m => monthTotals(m.key, state.region));
+  const bList = mList.map(m => monthTotals(m.key, state.region, state.siteId));
   const gross = bList.map(b => b.sub);
   const net   = bList.map(b => b.net);
   const pen   = bList.map(b => b.pen);
@@ -1252,7 +1257,7 @@ function barChart(elId, months, values, color) {
    Approval-stage funnel + aging note
    ============================================================ */
 function renderFunnel() {
-  const t = monthTotals(state.month, state.region);
+  const t = monthTotals(state.month, state.region, state.siteId);
   document.getElementById('funnelMonth').textContent = MONTHS.find(m=>m.key===state.month).label;
   const order = [['Submitted','var(--stage-1)'],['Verified','var(--stage-2)'],['Approved','var(--stage-3)'],['Paid','var(--stage-4)'],['On Hold','var(--stage-hold)']];
   const max = Math.max(1, ...order.map(o=>t.stageCount[o[0]]));
@@ -1279,7 +1284,7 @@ function renderFunnel() {
    Payment-mode breakdown
    ============================================================ */
 function renderModes() {
-  const t = monthTotals(state.month, state.region);
+  const t = monthTotals(state.month, state.region, state.siteId);
   document.getElementById('modeMonth').textContent = MONTHS.find(m=>m.key===state.month).label;
   const el = document.getElementById('modeBars');
   const totalPaid = MODES.reduce((s,m) => s+t.modeAmt[m], 0);
@@ -1359,6 +1364,7 @@ function renderTable() {
       mode:rec.reported?rec.mode:null, age:ageSortVal(rec), debt:(debtorDays(rec)??-1), note:rec.reported?rec.note:null };
   });
   if (state.region!=='all') rows=rows.filter(r=>r.region===state.region);
+  if (state.siteId && state.siteId!=='all') rows=rows.filter(r=>r.id===+state.siteId);
   if (state.status!=='all') {
     if (state.status==='Not reported') rows=rows.filter(r=>r.status===null);
     else rows=rows.filter(r=>r.status===state.status);
@@ -1554,10 +1560,38 @@ function syncModeField() {
   document.getElementById('fModeHint').textContent = paid ? 'Cash-branch settlement mode for this payment.' : 'Enabled when stage is Cash or Bill Cleared.';
 }
 
+function updateSiteDropdown() {
+  const siteSel = document.getElementById('siteSel');
+  if (!siteSel) return;
+  let filtered = sites;
+  if (state.region !== 'all') {
+    filtered = sites.filter(s => s.region === state.region);
+  }
+  siteSel.innerHTML = `<option value="all">All sites</option>` +
+    filtered.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+
+  if (state.siteId !== 'all' && filtered.some(s => s.id === +state.siteId)) {
+    siteSel.value = state.siteId;
+  } else {
+    state.siteId = 'all';
+    siteSel.value = 'all';
+  }
+}
+
 function fillFormSelectors() {
   document.getElementById('fSite').innerHTML  = sites.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
   document.getElementById('fMonth').innerHTML = MONTHS.slice().reverse().map(m => `<option value="${m.key}">${m.label}</option>`).join('');
   document.getElementById('fSite').addEventListener('change', updateFormStatusOptions);
+
+  const regions = [...new Set(sites.map(s => s.region))];
+  const regionSel = document.getElementById('regionSel');
+  if (regionSel) {
+    const curRegion = state.region;
+    regionSel.innerHTML = `<option value="all">All regions</option>` + regions.map(r => `<option value="${r}">${r}</option>`).join('');
+    regionSel.value = regions.includes(curRegion) ? curRegion : 'all';
+    state.region = regionSel.value;
+  }
+  updateSiteDropdown();
 
   const upd = () => {
     const b=+document.getElementById('fBilled').value||0, p=+document.getElementById('fPenalty').value||0,
@@ -1750,10 +1784,15 @@ function initControls() {
   ms.value = state.month;
   ms.addEventListener('change', () => { state.month=ms.value; renderAll(); });
 
-  const regions = [...new Set(sites.map(s=>s.region))];
-  document.getElementById('regionSel').innerHTML =
-    `<option value="all">All regions</option>` + regions.map(r=>`<option>${r}</option>`).join('');
-  document.getElementById('regionSel').addEventListener('change',e=>{ state.region=e.target.value; renderAll(); });
+  document.getElementById('regionSel').addEventListener('change', e => {
+    state.region = e.target.value;
+    updateSiteDropdown();
+    renderAll();
+  });
+  document.getElementById('siteSel').addEventListener('change', e => {
+    state.siteId = e.target.value;
+    renderAll();
+  });
   document.getElementById('statusSel').addEventListener('change',e=>{ state.status=e.target.value; renderTable(); });
   document.getElementById('searchBox').addEventListener('input', e=>{ state.search=e.target.value; renderTable(); });
 
