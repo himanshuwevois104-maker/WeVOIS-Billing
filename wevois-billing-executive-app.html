@@ -938,7 +938,15 @@ async function saveSheet() {
 
   const dv    = document.getElementById('uDate').value;
   const stamp = dv ? new Date(dv+'T12:00:00').toISOString() : new Date().toISOString();
-  const STAGE_FIELDS = { Submitted:'submitted_at', Verified:'verified_at', Approved:'approved_at', Paid:'paid_at' };
+  const STAGE_FIELDS = {
+    Submitted: 'submitted_at',
+    'Bill Submmited': 'submitted_at',
+    Verified: 'verified_at',
+    Approved: 'approved_at',
+    Paid: 'paid_at',
+    'Bill Cleared': 'paid_at',
+    Cash: 'paid_at'
+  };
   const timestamps = {
     submitted_at: prev?.dates?.Submitted ? new Date(prev.dates.Submitted).toISOString() : null,
     verified_at:  prev?.dates?.Verified  ? new Date(prev.dates.Verified).toISOString()  : null,
@@ -946,8 +954,14 @@ async function saveSheet() {
     paid_at:      prev?.dates?.Paid      ? new Date(prev.dates.Paid).toISOString()      : null,
     hold_since:   null
   };
-  if (pickedStage==='On Hold') timestamps.hold_since = stamp;
-  else timestamps[STAGE_FIELDS[pickedStage]] = stamp;
+  if (pickedStage === 'On Hold') {
+    timestamps.hold_since = stamp;
+  } else if (STAGE_FIELDS[pickedStage]) {
+    timestamps[STAGE_FIELDS[pickedStage]] = stamp;
+  } else {
+    if (!timestamps.submitted_at) timestamps.submitted_at = stamp;
+  }
+  delete timestamps['undefined'];
 
   const saveBtn = document.getElementById('saveBtn');
   saveBtn.textContent='Saving…'; saveBtn.disabled=true;
