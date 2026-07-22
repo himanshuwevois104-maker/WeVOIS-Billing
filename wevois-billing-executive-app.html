@@ -902,9 +902,14 @@ function syncNet() {
   document.getElementById('uNet').value=rupees(Math.max(0,b-p));
 }
 function syncMode() {
-  const paid=pickedStage==='Paid'||pickedStage==='Cash'||pickedStage==='Bill Cleared';
-  document.getElementById('uMode').disabled=!paid;
-  document.getElementById('modeHint').textContent=paid?'Cash-branch settlement mode for this payment.':'Payment mode is enabled when the stage is Cash or Bill Cleared.';
+  const paid = pickedStage === 'Paid' || pickedStage === 'Cash' || pickedStage === 'Bill Cleared';
+  document.getElementById('uMode').disabled = !paid;
+  const modeWrap = document.getElementById('uMode')?.closest('.field');
+  const noteWrap = document.getElementById('uNote')?.closest('.field');
+  if (modeWrap) modeWrap.style.display = paid ? '' : 'none';
+  if (noteWrap) noteWrap.style.display = paid ? '' : 'none';
+  const modeHint = document.getElementById('modeHint');
+  if (modeHint) modeHint.textContent = paid ? 'Cash-branch settlement mode for this payment.' : 'Visible when stage is Cash or Bill Cleared.';
 }
 function renderStagePick() {
   const steps = getSiteSteps(state.site);

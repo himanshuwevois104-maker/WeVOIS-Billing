@@ -562,21 +562,25 @@
         <input type="date" id="fDate">
       </div>
       <div>
+        <label for="fNet">Net payable (auto)</label>
+        <input type="text" id="fNet" readonly>
+      </div>
+      <div id="modeWrap">
         <label for="fMode">Payment mode</label>
         <select id="fMode">
           <option>Treasury</option><option>Self</option>
           <option>PFMS</option><option>Cheque</option>
         </select>
-        <p class="hint" id="fModeHint">Enabled when stage is Paid.</p>
+        <p class="hint" id="fModeHint">Visible when stage is Cash or Bill Cleared.</p>
       </div>
-      <div>
-        <label for="fNet">Net payable (auto)</label>
-        <input type="text" id="fNet" readonly>
+      <div class="full" id="remarkWrap">
+        <label for="fRemark">Remark (optional)</label>
+        <input type="text" id="fRemark" placeholder="e.g. Sent to Accounts department / Approved by Executive Engineer">
       </div>
-      <div class="full">
-        <label for="fNote">Monthly Bill Document / Notesheet (PDF or Image)</label>
+      <div class="full" id="noteWrap">
+        <label for="fNote">Signed notesheet photo / Bill Document (PDF or Image)</label>
         <input type="file" id="fNote" accept="image/*,application/pdf,.pdf">
-        <p class="hint">Upload a PDF or image of the monthly bill / signed notesheet.</p>
+        <p class="hint">Upload a PDF or image of the monthly bill / signed notesheet (optional at Bill Cleared stage).</p>
         <div class="note-preview" id="notePreview" style="display:none;margin-top:8px">
           <img id="notePreviewImg" alt="preview" style="max-width:100%;max-height:180px;display:none;border-radius:8px">
           <div id="notePreviewPdf" style="display:none;padding:10px;background:var(--surface-2);border:1px dashed var(--brand);border-radius:8px;font-weight:600;font-size:13px;color:var(--brand)">📄 <span id="notePdfName">Monthly Bill PDF selected</span></div>
@@ -1595,9 +1599,13 @@ function updateFormStatusOptions() {
 }
 
 function syncModeField() {
-  const paid = ['Paid','Cash','Bill Cleared'].includes(document.getElementById('fStatus').value);
-  document.getElementById('fMode').disabled = !paid;
-  document.getElementById('fModeHint').textContent = paid ? 'Cash-branch settlement mode for this payment.' : 'Enabled when stage is Cash or Bill Cleared.';
+  const status = document.getElementById('fStatus').value;
+  const isCleared = ['Paid','Cash','Bill Cleared'].includes(status);
+  const modeWrap = document.getElementById('modeWrap') || document.getElementById('fMode')?.closest('div');
+  const noteWrap = document.getElementById('noteWrap') || document.getElementById('fNote')?.closest('.full');
+  if (modeWrap) modeWrap.style.display = isCleared ? '' : 'none';
+  if (noteWrap) noteWrap.style.display = isCleared ? '' : 'none';
+  document.getElementById('fMode').disabled = !isCleared;
 }
 
 function updateSiteDropdown() {
@@ -1671,9 +1679,19 @@ function openForm() {
   document.getElementById('notePreview').style.display='none';
   document.getElementById('fNote').value='';
   document.getElementById('fMonth').value=state.month;
-  ['fBilled','fPenalty','fGst','fTds','fNet'].forEach(id=>document.getElementById(id).value='');
+  ['fBilled','fPenalty','fGst','fTds','fNet','fRemark'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
   const today=new Date();
   document.getElementById('fDate').value = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+
+  const sid = +document.getElementById('fSite').value;
+  const mk  = document.getElementById('fMonth').value;
+  const prev = records[sid]?.[mk];
+  if (prev && document.getElementById('fRemark')) {
+    document.getElementById('fRemark').value = prev.remark || '';
+  }
 
   const isBillingManager = currentUser?.role === 'billing_manager';
   const roleHint = document.getElementById('roleFormHint');
@@ -1681,8 +1699,6 @@ function openForm() {
   const penWrap  = document.getElementById('fPenalty')?.closest('div');
   const gstWrap  = document.getElementById('fGst')?.closest('div');
   const tdsWrap  = document.getElementById('fTds')?.closest('div');
-  const modeWrap = document.getElementById('fMode')?.closest('div');
-
   const isSiteManager = currentUser?.role === 'site_manager';
 
   if (isBillingManager) {
@@ -1693,7 +1709,6 @@ function openForm() {
     if (penWrap)  penWrap.style.display  = 'none';
     if (gstWrap)  gstWrap.style.display  = 'none';
     if (tdsWrap)  tdsWrap.style.display  = 'none';
-    if (modeWrap) modeWrap.style.display = 'none';
   } else if (isSiteManager) {
     if (roleHint) {
       roleHint.style.display = 'block';
@@ -1702,19 +1717,16 @@ function openForm() {
     if (penWrap)  penWrap.style.display  = '';
     if (gstWrap)  gstWrap.style.display  = '';
     if (tdsWrap)  tdsWrap.style.display  = '';
-    if (modeWrap) modeWrap.style.display = '';
   } else {
     if (roleHint) roleHint.style.display = 'none';
     if (penWrap)  penWrap.style.display  = '';
     if (gstWrap)  gstWrap.style.display  = '';
     if (tdsWrap)  tdsWrap.style.display  = '';
-    if (modeWrap) modeWrap.style.display = '';
   }
 
   updateFormStatusOptions();
 
   if (isBillingManager) {
-    const sid = +document.getElementById('fSite').value;
     const steps = getSiteSteps(sid);
     const subStep = steps.includes('Bill Submmited') ? 'Bill Submmited' : (steps[1] || steps[0]);
     document.getElementById('fStatus').value = subStep;
@@ -1737,6 +1749,8 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
   const penalty = isBillingManager ? (prev?.penalty || 0) : (+document.getElementById('fPenalty').value || 0);
   const gst     = isBillingManager ? (prev?.gst || 0)     : (+document.getElementById('fGst').value || 0);
   const tds     = isBillingManager ? (prev?.tds || 0)     : (+document.getElementById('fTds').value || 0);
+  const remark  = document.getElementById('fRemark')?.value.trim() || null;
+
   let status  = document.getElementById('fStatus').value;
   if (!status || status === 'Not started Yet' || status === 'Not Started') {
     const steps = getSiteSteps(sid);
@@ -1789,7 +1803,7 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
     // Upsert bill record in Supabase
     const payload = {
       site_id: sid, month_key: mk,
-      billed, penalty, gst, tds, status,
+      billed, penalty, gst, tds, status, remark,
       payment_mode: ['Paid','Cash','Bill Cleared'].includes(status) ? document.getElementById('fMode').value : (prev?.mode||null),
       notesheet_path,
       updated_by: (await sb.auth.getUser()).data.user?.id,
