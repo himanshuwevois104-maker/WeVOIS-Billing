@@ -1,6 +1,20 @@
 -- WeVois Billing — Row Level Security
 -- Run AFTER 01_schema.sql in Supabase SQL Editor
 
+-- ── Admin Helper Function (SECURITY DEFINER bypasses RLS to prevent recursion)
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.user_profiles
+    WHERE id = auth.uid() AND role = 'admin'
+  );
+$$;
+
 -- Enable RLS on all tables
 ALTER TABLE user_profiles    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sites             ENABLE ROW LEVEL SECURITY;
@@ -9,62 +23,54 @@ ALTER TABLE bills             ENABLE ROW LEVEL SECURITY;
 
 
 -- ── user_profiles ─────────────────────────────────────────────────────────────
--- Every authenticated user can read all profiles (needed for role checks)
 DROP POLICY IF EXISTS "profiles_read" ON user_profiles;
 CREATE POLICY "profiles_read" ON user_profiles
   FOR SELECT USING (auth.role() = 'authenticated');
 
--- Users can only update their own profile
 DROP POLICY IF EXISTS "profiles_own_update" ON user_profiles;
 CREATE POLICY "profiles_own_update" ON user_profiles
   FOR UPDATE USING (id = auth.uid());
 
+DROP POLICY IF EXISTS "profiles_admin_all" ON user_profiles;
+DROP POLICY IF EXISTS "profiles_admin_upsert" ON user_profiles;
+CREATE POLICY "profiles_admin_all" ON user_profiles
+  FOR ALL USING (public.is_admin())
+  WITH CHECK (public.is_admin());
+
 
 -- ── sites ─────────────────────────────────────────────────────────────────────
--- Admin sees all sites
 DROP POLICY IF EXISTS "sites_admin" ON sites;
-CREATE POLICY "sites_admin" ON sites
-  FOR SELECT USING (
-    (SELECT role FROM user_profiles WHERE id = auth.uid()) = 'admin'
-  );
-
--- Executive sees only their assigned sites
 DROP POLICY IF EXISTS "sites_exec" ON sites;
-CREATE POLICY "sites_exec" ON sites
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM site_assignments
-      WHERE user_id = auth.uid() AND site_id = sites.id
-    )
-  );
+DROP POLICY IF EXISTS "sites_admin_all" ON sites;
+DROP POLICY IF EXISTS "sites_read_authenticated" ON sites;
+
+CREATE POLICY "sites_read_authenticated" ON sites
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+CREATE POLICY "sites_admin_all" ON sites
+  FOR ALL USING (public.is_admin())
+  WITH CHECK (public.is_admin());
 
 
 -- ── site_assignments ──────────────────────────────────────────────────────────
--- Executives can see their own assignments
 DROP POLICY IF EXISTS "assignments_own" ON site_assignments;
-CREATE POLICY "assignments_own" ON site_assignments
-  FOR SELECT USING (user_id = auth.uid());
-
--- Admin can see all assignments
 DROP POLICY IF EXISTS "assignments_admin" ON site_assignments;
-CREATE POLICY "assignments_admin" ON site_assignments
-  FOR SELECT USING (
-    (SELECT role FROM user_profiles WHERE id = auth.uid()) = 'admin'
-  );
+DROP POLICY IF EXISTS "assignments_admin_all" ON site_assignments;
+
+CREATE POLICY "assignments_read" ON site_assignments
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+CREATE POLICY "assignments_admin_all" ON site_assignments
+  FOR ALL USING (public.is_admin())
+  WITH CHECK (public.is_admin());
 
 
 -- ── bills ─────────────────────────────────────────────────────────────────────
--- Admin: full access to all bills
 DROP POLICY IF EXISTS "bills_admin_all" ON bills;
 CREATE POLICY "bills_admin_all" ON bills
-  FOR ALL USING (
-    (SELECT role FROM user_profiles WHERE id = auth.uid()) = 'admin'
-  )
-  WITH CHECK (
-    (SELECT role FROM user_profiles WHERE id = auth.uid()) = 'admin'
-  );
+  FOR ALL USING (public.is_admin())
+  WITH CHECK (public.is_admin());
 
--- Executive: read own assigned sites only
 DROP POLICY IF EXISTS "bills_exec_read" ON bills;
 CREATE POLICY "bills_exec_read" ON bills
   FOR SELECT USING (
@@ -74,7 +80,6 @@ CREATE POLICY "bills_exec_read" ON bills
     )
   );
 
--- Executive: insert bills for own sites
 DROP POLICY IF EXISTS "bills_exec_insert" ON bills;
 CREATE POLICY "bills_exec_insert" ON bills
   FOR INSERT WITH CHECK (
@@ -84,7 +89,6 @@ CREATE POLICY "bills_exec_insert" ON bills
     )
   );
 
--- Executive: update bills for own sites
 DROP POLICY IF EXISTS "bills_exec_update" ON bills;
 CREATE POLICY "bills_exec_update" ON bills
   FOR UPDATE USING (
