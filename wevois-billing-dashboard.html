@@ -964,8 +964,17 @@ async function initApp() {
 }
 
 /* ============================================================
-   Formatting helpers
+   Formatting & DOM helpers
    ============================================================ */
+function setText(id, txt) {
+  const el = typeof id === 'string' ? document.getElementById(id) : id;
+  if (el) el.textContent = txt;
+}
+function setHtml(id, html) {
+  const el = typeof id === 'string' ? document.getElementById(id) : id;
+  if (el) el.innerHTML = html;
+}
+
 const inr = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
 function rupees(v) { return '₹' + inr.format(Math.round(v)); }
 function short(v) {
@@ -1114,19 +1123,19 @@ function renderKpis() {
   const dNet  = prev && prev.net  ? (cur.net  - prev.net)  / prev.net  : null;
   const dPaid = prev && prev.paid ? (cur.paid - prev.paid) / prev.paid : null;
 
-  document.getElementById('kGross').textContent = short(cur.sub);
-  document.getElementById('kPen').textContent   = short(cur.pen);
-  document.getElementById('kNet').textContent   = short(cur.net);
-  document.getElementById('kPaid').textContent  = short(cur.paid);
+  setText('kGross', short(cur.sub));
+  setText('kPen',   short(cur.pen));
+  setText('kNet',   short(cur.net));
+  setText('kPaid',  short(cur.paid));
 
-  document.getElementById('dGross').innerHTML = fmtDelta(dSub,  true);
-  document.getElementById('dPen').innerHTML   = fmtDelta(dPen,  false); // lower penalty = good
-  document.getElementById('dNet').innerHTML   = fmtDelta(dNet,  true);
-  document.getElementById('dPaid').innerHTML  = fmtDelta(dPaid, true);
+  setHtml('dGross', fmtDelta(dSub,  true));
+  setHtml('dPen',   fmtDelta(dPen,  false)); // lower penalty = good
+  setHtml('dNet',   fmtDelta(dNet,  true));
+  setHtml('dPaid',  fmtDelta(dPaid, true));
 
   const repRate = cur.totalCount ? cur.reportedCount / cur.totalCount : 0;
-  document.getElementById('kRep').textContent = `${cur.reportedCount} / ${cur.totalCount}`;
-  document.getElementById('dRep').textContent = `(${pct(repRate)} sites filed)`;
+  setText('kRep', `${cur.reportedCount} / ${cur.totalCount}`);
+  setText('dRep', `(${pct(repRate)} sites filed)`);
 }
 function fmtDelta(d, flipGood) {
   if (d == null) return '—';
@@ -1260,25 +1269,28 @@ function barChart(elId, months, values, color) {
    ============================================================ */
 function renderFunnel() {
   const t = monthTotals(state.month, state.region, state.siteId);
-  document.getElementById('funnelMonth').textContent = MONTHS.find(m=>m.key===state.month).label;
+  const mObj = MONTHS.find(m=>m.key===state.month);
+  setText('funnelMonth', mObj ? mObj.label : state.month);
   const order = [['Submitted','var(--stage-1)'],['Verified','var(--stage-2)'],['Approved','var(--stage-3)'],['Paid','var(--stage-4)'],['On Hold','var(--stage-hold)']];
   const max = Math.max(1, ...order.map(o=>t.stageCount[o[0]]));
   const icons = { Submitted:'📝', Verified:'🔍', Approved:'✔️', Paid:'💰', 'On Hold':'⚠️' };
-  document.getElementById('funnel').innerHTML = order.map(([name,col]) => {
+  setHtml('funnel', order.map(([name,col]) => {
     const c=t.stageCount[name], amt=t.stageAmt[name];
     return `<div class="fn-row">
       <div class="fn-lab">${icons[name]} ${name}</div>
       <div class="fn-track"><div class="fn-bar" style="width:${(c/max*100).toFixed(1)}%;background:${col}"></div></div>
       <div class="fn-meta">${c} site${c===1?'':'s'} <small>· ${short(amt)}</small></div>
     </div>`;
-  }).join('');
+  }).join(''));
   const note = document.getElementById('agingNote');
-  if (t.stuck > 0) {
-    note.className='aging-note warn';
-    note.innerHTML=`⚠️&nbsp; <span>${t.stuck} unpaid bill${t.stuck===1?'':'s'} waiting <b>more than 7 days</b> at the current stage — see the "Days" column below.</span>`;
-  } else {
-    note.className='aging-note ok';
-    note.innerHTML=`✓&nbsp; <span>No unpaid bill has been stuck at a stage for more than 7 days.</span>`;
+  if (note) {
+    if (t.stuck > 0) {
+      note.className='aging-note warn';
+      note.innerHTML=`⚠️&nbsp; <span>${t.stuck} unpaid bill${t.stuck===1?'':'s'} waiting <b>more than 7 days</b> at the current stage — see the "Days" column below.</span>`;
+    } else {
+      note.className='aging-note ok';
+      note.innerHTML=`✓&nbsp; <span>No unpaid bill has been stuck at a stage for more than 7 days.</span>`;
+    }
   }
 }
 
@@ -1287,7 +1299,8 @@ function renderFunnel() {
    ============================================================ */
 function renderModes() {
   const t = monthTotals(state.month, state.region, state.siteId);
-  document.getElementById('modeMonth').textContent = MONTHS.find(m=>m.key===state.month).label;
+  const mObj = MONTHS.find(m=>m.key===state.month);
+  setText('modeMonth', mObj ? mObj.label : state.month);
   const el = document.getElementById('modeBars');
   const totalPaid = MODES.reduce((s,m) => s+t.modeAmt[m], 0);
   if (totalPaid <= 0) { el.innerHTML = `<p class="cap" style="margin:6px 0">No bills marked Paid yet for this month.</p>`; return; }
@@ -1357,7 +1370,8 @@ function renderAgeingStrip(rows) {
 }
 function renderTable() {
   const mk = state.month;
-  document.getElementById('tblMonth').textContent = MONTHS.find(m=>m.key===mk).label;
+  const mObj = MONTHS.find(m=>m.key===mk);
+  setText('tblMonth', mObj ? mObj.label : mk);
   let rows = sites.map(s => {
     const rec = records[s.id]?.[mk] || { reported: false };
     return { id:s.id, name:s.name, region:s.region, rec,
@@ -1382,7 +1396,7 @@ function renderTable() {
     return (av-bv)*dir;
   });
   const reported = rows.filter(r=>r.status!==null).length;
-  document.getElementById('tblCount').textContent = `${rows.length} sites shown · ${reported} reported`;
+  setText('tblCount', `${rows.length} sites shown · ${reported} reported`);
   renderAgeingStrip(rows);
   document.getElementById('tblBody').innerHTML = rows.map(r => `
     <tr data-site="${r.id}"${(() => { const b=debtBucket(r.rec); return b?` style="box-shadow:inset 4px 0 0 ${b.color}"`:''; })()}>
@@ -1729,7 +1743,7 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
   delete timestamps['undefined'];
 
   const saveBtn = document.getElementById('saveBtn');
-  saveBtn.textContent='Saving…'; saveBtn.disabled=true;
+  if (saveBtn) { saveBtn.textContent='Saving…'; saveBtn.disabled=true; }
   try {
     // Upload notesheet to Supabase Storage (if new file selected)
     let notesheet_path = prev?.note || null;
@@ -1780,7 +1794,7 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
   } catch (e) {
     toast('Save failed: '+e.message);
   } finally {
-    saveBtn.textContent='Save bill'; saveBtn.disabled=false;
+    if (saveBtn) { saveBtn.textContent='Save bill'; saveBtn.disabled=false; }
   }
 });
 
