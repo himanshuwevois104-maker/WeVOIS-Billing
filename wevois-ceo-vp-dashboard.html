@@ -222,7 +222,7 @@
       <table id="overdueTable">
         <thead><tr>
           <th>Site</th><th>Region</th><th>Month</th>
-          <th class="num">Net due</th><th>Ageing</th><th class="num">Days</th><th>Stage</th><th></th>
+          <th class="num">Net due</th><th>Ageing</th><th class="num">Days</th><th>Stage</th><th>Bill Document</th><th>Action</th>
         </tr></thead>
         <tbody id="overdueBody"></tbody>
       </table>
@@ -246,6 +246,26 @@
     <div class="macts">
       <button class="btn" data-close>Cancel</button>
       <button class="btn primary" id="flagSubmit">🚩 Raise flag</button>
+    </div>
+  </div>
+</div>
+
+<!-- Bill Document Viewer modal -->
+<div class="overlay" id="noteOverlay">
+  <div class="modal" style="max-width:820px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div>
+        <h3 id="noteTitle" style="margin:0">Monthly Bill Document</h3>
+        <p id="noteSub" style="margin:2px 0 0;font-size:12px;color:var(--muted)"></p>
+      </div>
+      <button class="btn" data-close style="padding:4px 10px">✕</button>
+    </div>
+    <div style="text-align:center">
+      <img id="noteImg" style="max-width:100%;border-radius:10px;border:1px solid var(--border);display:none" alt="bill document">
+      <iframe id="notePdfFrame" style="width:100%;height:520px;border:1px solid var(--border);border-radius:10px;display:none"></iframe>
+      <div id="notePdfLinkWrap" style="margin-top:12px;display:none">
+        <a id="notePdfLink" href="#" target="_blank" class="btn primary" style="display:inline-flex;align-items:center;gap:6px">📄 Open Full PDF in New Tab ↗</a>
+      </div>
     </div>
   </div>
 </div>
@@ -393,10 +413,12 @@ function renderOverdue(){
     return { b, s, d:d==null?-1:d, net:netOf(b) }; })
     .filter(r=>r.s).sort((a,bb)=>bb.d-a.d);
   const body = document.getElementById('overdueBody');
-  if(!rows.length){ body.innerHTML='<tr><td colspan="8" class="empty">No outstanding bills 🎉</td></tr>'; return; }
+  if(!rows.length){ body.innerHTML='<tr><td colspan="9" class="empty">No outstanding bills 🎉</td></tr>'; return; }
   body.innerHTML = rows.map(r=>{
     const bk = r.d>=0 ? bucketOf(r.d) : null;
     const fl = flagMap[flagKey(r.s.id, r.b.month_key)];
+    const note = r.b.notesheet_path;
+    const isPdf = note ? note.toLowerCase().endsWith('.pdf') : false;
     return `<tr>
       <td>${fl?'🚩 ':''}<b>${r.s.name}</b></td>
       <td style="color:var(--ink-2)">${r.s.region||'—'}</td>
@@ -405,12 +427,48 @@ function renderOverdue(){
       <td>${bk?`<span class="pill" style="background:${cssVar(bk.cssv)}22;color:${cssVar(bk.cssv)}">${bk.range}</span>`:'—'}</td>
       <td class="num">${r.d>=0?r.d+'d':'—'}</td>
       <td style="color:var(--ink-2)">${r.b.status}</td>
+      <td>${note ? `<button class="mini" data-vnote="${note}" data-sname="${r.s.name}" data-mk="${r.b.month_key}" style="border:1px solid var(--brand);color:var(--brand);background:transparent;border-radius:6px;padding:3px 8px;cursor:pointer;font-weight:600">${isPdf?'📄 PDF':'📎 View'}</button>` : '<span style="color:var(--muted)">—</span>'}</td>
       <td>${fl?'<span class="flagged">flagged</span>':`<button class="flagbtn" data-flag="${r.s.id}|${r.b.month_key}">🚩 Flag</button>`}</td>
     </tr>`;
   }).join('');
   body.querySelectorAll('[data-flag]').forEach(btn=>btn.addEventListener('click',()=>{
     const [sid,mk]=btn.dataset.flag.split('|'); openFlag(+sid, mk);
   }));
+  body.querySelectorAll('[data-vnote]').forEach(btn=>btn.addEventListener('click',()=>{
+    openNote(btn.dataset.vnote, btn.dataset.sname, btn.dataset.mk);
+  }));
+}
+
+async function openNote(path, siteName, monthKey) {
+  if (!path) { toast('No document attached for this bill'); return; }
+  document.getElementById('noteTitle').textContent = 'Monthly Bill Document — ' + (siteName || '');
+  document.getElementById('noteSub').textContent = monthLabel(monthKey);
+  
+  const imgEl = document.getElementById('noteImg');
+  const pdfFrame = document.getElementById('notePdfFrame');
+  const pdfLinkWrap = document.getElementById('notePdfLinkWrap');
+  const pdfLink = document.getElementById('notePdfLink');
+
+  imgEl.style.display = 'none';
+  pdfFrame.style.display = 'none';
+  pdfLinkWrap.style.display = 'none';
+  document.getElementById('noteOverlay').classList.add('open');
+
+  const { data, error } = await sb.storage.from('notesheets').createSignedUrl(path, 3600);
+  if (error || !data?.signedUrl) { toast('Could not load bill document'); return; }
+
+  const url = data.signedUrl;
+  const isPdf = path.toLowerCase().endsWith('.pdf') || url.toLowerCase().includes('.pdf');
+
+  if (isPdf) {
+    pdfFrame.style.display = 'block';
+    pdfFrame.src = url;
+    pdfLink.href = url;
+    pdfLinkWrap.style.display = 'block';
+  } else {
+    imgEl.style.display = 'inline-block';
+    imgEl.src = url;
+  }
 }
 
 function renderRequests(){
