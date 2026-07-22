@@ -740,6 +740,18 @@ function getSiteSteps(site) {
 }
 
 const STAGES = ['Submitted','Verified','Approved','Paid'];
+const MODES  = ['Treasury','Self','PFMS','Cheque'];
+const DAY = 86400000, HOUR = 3600000;
+const NOW = Date.now();
+
+/* ---- Supabase client ---- */
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let currentUser = null;
+let sites       = [];
+let records     = {};
+let flags       = [];
+let flagMap     = {};
+let drillSiteId = null;
 const WRITER_ROLES     = ['billing_manager','site_manager','accounts','admin']; // may create / edit bills
 const LEADERSHIP_ROLES = ['leadership','admin'];          // VP & CEO — may raise flags
 const WORKFLOW_ROLES   = ['billing_manager','site_manager','admin'];
