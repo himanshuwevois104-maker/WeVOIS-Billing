@@ -505,6 +505,7 @@
       <div>
         <h3>Add / update a bill</h3>
         <p>Enter monthly figures &amp; attach the signed notesheet.</p>
+        <div id="roleFormHint" style="display:none;margin-top:6px;font-size:12px;font-weight:600;color:var(--brand);background:var(--surface-2);padding:6px 10px;border-radius:6px;border:1px dashed var(--brand)"></div>
       </div>
       <button class="close" data-close>×</button>
     </div>
@@ -1544,7 +1545,44 @@ function openForm() {
   ['fBilled','fPenalty','fGst','fTds','fNet'].forEach(id=>document.getElementById(id).value='');
   const today=new Date();
   document.getElementById('fDate').value = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+
+  const isBillingManager = currentUser?.role === 'billing_manager';
+  const roleHint = document.getElementById('roleFormHint');
+
+  const penWrap  = document.getElementById('fPenalty')?.closest('div');
+  const gstWrap  = document.getElementById('fGst')?.closest('div');
+  const tdsWrap  = document.getElementById('fTds')?.closest('div');
+  const modeWrap = document.getElementById('fMode')?.closest('div');
+
+  if (isBillingManager) {
+    if (roleHint) {
+      roleHint.style.display = 'block';
+      roleHint.textContent = 'ℹ️ Billing Manager Mode: Enter Gross Bill Amount & upload Bill PDF. Deductions (Penalty, GST, TDS) and final approvals will be completed by Site Manager / Accounts team.';
+    }
+    if (penWrap)  penWrap.style.display  = 'none';
+    if (gstWrap)  gstWrap.style.display  = 'none';
+    if (tdsWrap)  tdsWrap.style.display  = 'none';
+    if (modeWrap) modeWrap.style.display = 'none';
+  } else {
+    if (roleHint) roleHint.style.display = 'none';
+    if (penWrap)  penWrap.style.display  = '';
+    if (gstWrap)  gstWrap.style.display  = '';
+    if (tdsWrap)  tdsWrap.style.display  = '';
+    if (modeWrap) modeWrap.style.display = '';
+  }
+
   updateFormStatusOptions();
+
+  if (isBillingManager) {
+    const sid = +document.getElementById('fSite').value;
+    const steps = getSiteSteps(sid);
+    const subStep = steps.includes('Bill Submmited') ? 'Bill Submmited' : (steps[1] || steps[0]);
+    document.getElementById('fStatus').value = subStep;
+    document.getElementById('fStatus').disabled = true;
+  } else {
+    document.getElementById('fStatus').disabled = false;
+  }
+
   syncModeField();
   openOverlay('formOverlay');
 }
@@ -1553,10 +1591,14 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
   const sid    = +document.getElementById('fSite').value;
   const mk     = document.getElementById('fMonth').value;
   const billed = +document.getElementById('fBilled').value  || 0;
-  const penalty= +document.getElementById('fPenalty').value || 0;
-  const gst    = +document.getElementById('fGst').value || 0;
-  const tds    = +document.getElementById('fTds').value || 0;
-  const status = document.getElementById('fStatus').value;
+  const prev   = records[sid]?.[mk];
+
+  const isBillingManager = currentUser?.role === 'billing_manager';
+  const penalty = isBillingManager ? (prev?.penalty || 0) : (+document.getElementById('fPenalty').value || 0);
+  const gst     = isBillingManager ? (prev?.gst || 0)     : (+document.getElementById('fGst').value || 0);
+  const tds     = isBillingManager ? (prev?.tds || 0)     : (+document.getElementById('fTds').value || 0);
+  const status  = document.getElementById('fStatus').value;
+
   if (billed<=0)      { toast('Enter a gross billed amount'); return; }
   if (penalty+gst+tds>billed) { toast("Deductions can't exceed billed amount"); return; }
 

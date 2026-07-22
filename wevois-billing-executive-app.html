@@ -861,9 +861,19 @@ function openSheet() {
   pendingNoteFile=null;
   document.getElementById('uNote').value='';
   document.getElementById('notePreview').style.display='none';
-  if (!rec.reported) pickedStage='Submitted';
+
+  const isBillingManager = currentUser?.role === 'billing_manager';
+  const penWrap = document.getElementById('uPenalty')?.closest('.field');
+  if (isBillingManager && penWrap) penWrap.style.display = 'none';
+  else if (penWrap) penWrap.style.display = '';
+
+  if (isBillingManager) {
+    const steps = getSiteSteps(state.site);
+    pickedStage = steps.includes('Bill Submmited') ? 'Bill Submmited' : (steps[1] || steps[0]);
+  } else if (!rec.reported) pickedStage='Submitted';
   else if (rec.status==='On Hold') pickedStage='On Hold';
   else { const i=STAGES.indexOf(rec.status); pickedStage=i<STAGES.length-1?STAGES[i+1]:'Paid'; }
+
   if (rec.reported&&rec.mode) document.getElementById('uMode').value=rec.mode;
   const today=new Date();
   document.getElementById('uDate').value=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
@@ -878,7 +888,9 @@ function closeSheets() {
 
 async function saveSheet() {
   const billed  = +document.getElementById('uBilled').value  || 0;
-  const penalty = +document.getElementById('uPenalty').value || 0;
+  const isBillingManager = currentUser?.role === 'billing_manager';
+  const prev  = curRec();
+  const penalty = isBillingManager ? (prev?.penalty || 0) : (+document.getElementById('uPenalty').value || 0);
   if (billed<=0)      { toast('Enter a gross billed amount'); return; }
   if (penalty>billed) { toast("Penalty can't exceed billed amount"); return; }
 
