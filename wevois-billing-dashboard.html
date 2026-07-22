@@ -873,14 +873,16 @@ async function getProfile(userId, email) {
     if (data && data.role) return data;
   } catch(e) {}
 
-  let role = 'admin';
+  let role = 'site_manager';
   if (email) {
-    if (email.includes('billing')) role = 'billing_manager';
-    else if (email.includes('site') || email.includes('anand')) role = 'site_manager';
-    else if (email.includes('vp') || email.includes('ceo')) role = 'leadership';
-    else if (email.includes('accounts')) role = 'accounts';
+    const e = email.toLowerCase();
+    if (e.includes('admin')) role = 'admin';
+    else if (e.includes('billing')) role = 'billing_manager';
+    else if (e.includes('vp') || e.includes('ceo')) role = 'leadership';
+    else if (e.includes('accounts')) role = 'accounts';
+    else role = 'site_manager';
   }
-  return { id: userId || 'demo-id', full_name: email ? email.split('@')[0].toUpperCase() : 'Admin Manager', role };
+  return { id: userId || 'demo-id', full_name: email ? email.split('@')[0].toUpperCase() : 'Site Manager', role };
 }
 
 function quickLogin(email, pass) {
