@@ -43,9 +43,19 @@ DROP POLICY IF EXISTS "sites_admin" ON sites;
 DROP POLICY IF EXISTS "sites_exec" ON sites;
 DROP POLICY IF EXISTS "sites_admin_all" ON sites;
 DROP POLICY IF EXISTS "sites_read_authenticated" ON sites;
+DROP POLICY IF EXISTS "sites_read_scoped" ON sites;
 
-CREATE POLICY "sites_read_authenticated" ON sites
-  FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "sites_read_scoped" ON sites
+  FOR SELECT USING (
+    public.is_admin() OR
+    EXISTS (
+      SELECT 1 FROM user_profiles WHERE id = auth.uid() AND role IN ('leadership','admin')
+    ) OR
+    EXISTS (
+      SELECT 1 FROM site_assignments
+      WHERE user_id = auth.uid() AND site_id = sites.id
+    )
+  );
 
 CREATE POLICY "sites_admin_all" ON sites
   FOR ALL USING (public.is_admin())

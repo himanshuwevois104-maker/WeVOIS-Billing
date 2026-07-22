@@ -472,19 +472,30 @@ function transformBill(b) {
 /* ---- Load data for assigned sites ---- */
 async function loadData() {
   const keys = MONTHS.map(m => m.key);
-  const [{ data: sitesData, error: se }, { data: billsData, error: be }] = await Promise.all([
+  const isUnrestricted = currentUser?.role === 'admin' || currentUser?.role === 'leadership';
+
+  const [{ data: sitesData, error: se }, { data: billsData, error: be }, { data: asgData }] = await Promise.all([
     sb.from('sites').select('*').order('region').order('name'),
-    sb.from('bills').select('*').in('month_key', keys)
+    sb.from('bills').select('*').in('month_key', keys),
+    isUnrestricted ? Promise.resolve({ data: null }) : sb.from('site_assignments').select('site_id').eq('user_id', currentUser.id)
   ]);
   if (se) { showErr('Failed to load sites: ' + se.message); return; }
   if (be) { showErr('Failed to load bills: ' + be.message); return; }
 
-  sites = (sitesData || []).map(s => ({
+  const allSites = (sitesData || []).map(s => ({
     id: s.id,
     name: s.name,
     region: s.region,
     workflow_steps: s.workflow_steps || null
   }));
+
+  if (!isUnrestricted) {
+    const assignedSet = new Set((asgData || []).map(a => a.site_id));
+    sites = allSites.filter(s => assignedSet.has(s.id));
+  } else {
+    sites = allSites;
+  }
+
   records = {};
   sites.forEach(s => {
     records[s.id] = {};
@@ -493,6 +504,10 @@ async function loadData() {
   (billsData || []).forEach(b => {
     if (records[b.site_id]) records[b.site_id][b.month_key] = transformBill(b);
   });
+
+  if (!isUnrestricted && sites.length === 0) {
+    toast('⚠️ No sites assigned to your account yet. Please contact Admin.');
+  }
 }
 
 function showErr(msg) { toast(msg); }
