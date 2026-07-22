@@ -1551,8 +1551,11 @@ function updateFormStatusOptions() {
   document.getElementById('fStatus').innerHTML =
     steps.map(st => `<option value="${st}">${st}</option>`).join('') +
     `<option value="On Hold">On Hold</option>`;
-  if ([...document.getElementById('fStatus').options].some(o => o.value === curVal)) {
+  if (curVal && curVal !== 'Not started Yet' && curVal !== 'Not Started' && [...document.getElementById('fStatus').options].some(o => o.value === curVal)) {
     document.getElementById('fStatus').value = curVal;
+  } else {
+    const subStep = steps.includes('Bill Submmited') ? 'Bill Submmited' : (steps[1] || steps[0] || 'Submitted');
+    document.getElementById('fStatus').value = subStep;
   }
 }
 
@@ -1688,7 +1691,11 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
   const penalty = isBillingManager ? (prev?.penalty || 0) : (+document.getElementById('fPenalty').value || 0);
   const gst     = isBillingManager ? (prev?.gst || 0)     : (+document.getElementById('fGst').value || 0);
   const tds     = isBillingManager ? (prev?.tds || 0)     : (+document.getElementById('fTds').value || 0);
-  const status  = document.getElementById('fStatus').value;
+  let status  = document.getElementById('fStatus').value;
+  if (!status || status === 'Not started Yet' || status === 'Not Started') {
+    const steps = getSiteSteps(sid);
+    status = steps.includes('Bill Submmited') ? 'Bill Submmited' : (steps[1] || steps[0] || 'Submitted');
+  }
 
   if (billed<=0)      { toast('Enter a gross billed amount'); return; }
   if (penalty+gst+tds>billed) { toast("Deductions can't exceed billed amount"); return; }
@@ -1749,8 +1756,19 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
       delete payload.gst;
       delete payload.tds;
       const { data: res2, error: err2 } = await sb.from('bills').upsert(payload, { onConflict: 'site_id,month_key' }).select().single();
-      if (err2) { toast('Save failed: ' + err2.message); return; }
-      result = res2;
+      if (err2) {
+        if (err2.message && err2.message.includes('bills_status_check')) {
+          payload.status = ['Paid','Bill Cleared','Cash'].includes(status) ? 'Paid' : (status === 'On Hold' ? 'On Hold' : 'Submitted');
+          const { data: res3, error: err3 } = await sb.from('bills').upsert(payload, { onConflict: 'site_id,month_key' }).select().single();
+          if (err3) { toast('Save failed: ' + err3.message); return; }
+          result = res3;
+        } else { toast('Save failed: ' + err2.message); return; }
+      } else { result = res2; }
+    } else if (error && error.message && error.message.includes('bills_status_check')) {
+      payload.status = ['Paid','Bill Cleared','Cash'].includes(status) ? 'Paid' : (status === 'On Hold' ? 'On Hold' : 'Submitted');
+      const { data: res3, error: err3 } = await sb.from('bills').upsert(payload, { onConflict: 'site_id,month_key' }).select().single();
+      if (err3) { toast('Save failed: ' + err3.message); return; }
+      result = res3;
     } else if (error) {
       toast('Save failed: ' + error.message);
       return;
