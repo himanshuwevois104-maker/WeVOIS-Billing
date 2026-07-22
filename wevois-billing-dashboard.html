@@ -497,6 +497,7 @@
         <p id="drillSub"></p>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn primary" id="drillUpdateBtn" style="display:none;font-size:12px;padding:6px 12px" onclick="openFormForSite(drillSiteId)">✏️ Update status</button>
         <button class="btn" id="flagBtn" style="display:none" onclick="raiseFlag()">🚩 Raise flag</button>
         <button class="close" data-close>×</button>
       </div>
@@ -1432,7 +1433,12 @@ function renderTable() {
       <td class="num" style="color:${r.gst?'var(--penalty)':'inherit'}">${r.gst!=null?(r.gst?'−'+rupees(r.gst):'₹0'):'—'}</td>
       <td class="num" style="color:${r.tds?'var(--penalty)':'inherit'}">${r.tds!=null?(r.tds?'−'+rupees(r.tds):'₹0'):'—'}</td>
       <td class="num" style="font-weight:650">${r.net!=null?rupees(r.net):'—'}</td>
-      <td title="${dateTitle(r.rec)}">${statusBadge(r.status, r.id)} ${canManageWorkflow() ? `<span class="note-chip" data-editwf="${r.id}" style="margin-left:4px" title="Customize billing flow for this site">⚙️ Flow</span>` : ''}${(r.status==='Paid'||r.status==='Bill Cleared'||r.status==='Cash')&&r.mode?`<div class="site-region" style="margin-top:2px">via ${r.mode}</div>`:''}</td>
+      <td title="${dateTitle(r.rec)}">
+        <span style="cursor:pointer;display:inline-flex;align-items:center" data-editstatus="${r.id}" title="Click to update status / stage for ${r.name}">${statusBadge(r.status, r.id)}</span>
+        ${canWrite() ? `<span class="note-chip" data-editstatus="${r.id}" style="margin-left:4px" title="Update status / stage for ${r.name}">✏️ Update</span>` : ''}
+        ${canManageWorkflow() ? `<span class="note-chip" data-editwf="${r.id}" style="margin-left:4px" title="Customize billing flow for ${r.name}">⚙️ Flow</span>` : ''}
+        ${(r.status==='Paid'||r.status==='Bill Cleared'||r.status==='Cash')&&r.mode?`<div class="site-region" style="margin-top:2px">via ${r.mode}</div>`:''}
+      </td>
       <td>${ageingCell(r.rec)}</td>
       <td>${ageCell(r.rec)}</td>
       <td>${r.note?`<span class="note-chip" data-note="${r.id}">${r.note.toLowerCase().endsWith('.pdf') ? '📄 PDF' : '📎 View'}</span>`:(r.status?'<span class="note-none">— none</span>':'<span class="note-none">—</span>')}</td>
@@ -1445,10 +1451,43 @@ function renderTable() {
         openWorkflowEditor(+e.target.closest('[data-editwf]').dataset.editwf);
         return;
       }
+      if (e.target.closest('[data-editstatus]')) {
+        e.stopPropagation();
+        openFormForSite(+e.target.closest('[data-editstatus]').dataset.editstatus);
+        return;
+      }
+      if (e.target.closest('.badge')) {
+        e.stopPropagation();
+        openFormForSite(+tr.dataset.site);
+        return;
+      }
       if (e.target.closest('.note-chip')) { openNote(+e.target.closest('.note-chip').dataset.note); return; }
       openDrill(+tr.dataset.site);
     });
   });
+}
+
+function openFormForSite(siteId) {
+  openForm();
+  document.getElementById('fSite').value = siteId;
+  updateFormStatusOptions();
+  const mk = state.month;
+  document.getElementById('fMonth').value = mk;
+  const prev = records[siteId]?.[mk];
+  if (prev && prev.reported) {
+    document.getElementById('fBilled').value = prev.billed || '';
+    document.getElementById('fPenalty').value = prev.penalty || '';
+    document.getElementById('fGst').value = prev.gst || '';
+    document.getElementById('fTds').value = prev.tds || '';
+    document.getElementById('fStatus').value = prev.status || 'Bill Submmited';
+    if (document.getElementById('fRemark')) document.getElementById('fRemark').value = prev.remark || '';
+  } else {
+    ['fBilled','fPenalty','fGst','fTds','fRemark'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+  }
+  syncModeField();
 }
 
 /* ============================================================
@@ -1461,7 +1500,10 @@ async function openDrill(siteId) {
   document.getElementById('drillTitle').textContent = s.name;
   document.getElementById('drillSub').textContent   = s.region + ' · 12-month billing history'
     + (openFlag ? '  ·  🚩 FLAGGED: ' + openFlag.note : '');
-  document.getElementById('flagBtn').style.display = canFlag() ? '' : 'none';
+  const flagBtn = document.getElementById('flagBtn');
+  if (flagBtn) flagBtn.style.display = canFlag() ? '' : 'none';
+  const drillUpdBtn = document.getElementById('drillUpdateBtn');
+  if (drillUpdBtn) drillUpdBtn.style.display = canWrite() ? '' : 'none';
 
   const keys = MONTHS.map(m => m.key);
   const { data: billsData } = await sb.from('bills').select('*').eq('site_id', siteId).in('month_key', keys);
