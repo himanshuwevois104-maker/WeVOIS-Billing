@@ -1660,7 +1660,6 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
   const dv    = document.getElementById('fDate').value;
   const stamp = dv ? new Date(dv+'T12:00:00').toISOString() : new Date().toISOString();
 
-  const prev  = records[sid]?.[mk];
   const STAGE_FIELDS = { Submitted:'submitted_at', Verified:'verified_at', Approved:'approved_at', Paid:'paid_at' };
   const timestamps = {
     submitted_at: prev?.dates?.Submitted ? new Date(prev.dates.Submitted).toISOString() : null,
