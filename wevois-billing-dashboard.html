@@ -291,7 +291,7 @@
       <label for="loginPass">Password</label>
       <input type="password" id="loginPass" placeholder="Enter password" autocomplete="current-password">
     </div>
-    <button class="login-btn" id="loginBtn" onclick="doLogin()">Sign in →</button>
+    <button type="button" class="login-btn" id="loginBtn">Sign in →</button>
     <p class="login-hint">Demo: admin@wevois.com / admin123</p>
   </div>
 </div>
@@ -865,10 +865,15 @@ async function doLogin() {
   if (!email || !pass) { errEl.textContent = 'Enter email and password'; errEl.style.display = 'block'; return; }
 
   const btn = document.getElementById('loginBtn');
+  if (btn.disabled) return;
   btn.textContent = 'Signing in…'; btn.disabled = true;
   try {
     const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
-    if (error) { errEl.textContent = error.message; errEl.style.display = 'block'; return; }
+    if (error) {
+      errEl.textContent = 'Sign-in failed: ' + error.message;
+      errEl.style.display = 'block';
+      return;
+    }
 
     const profile = await getProfile(data.user.id);
     currentUser = { id: data.user.id, ...profile, email: data.user.email };
@@ -877,9 +882,9 @@ async function doLogin() {
     hideLoginScreen();
     await loadData();
     document.getElementById('loadingOverlay').classList.remove('active');
-    initControls(); fillFormSelectors(); renderAll();
+    fillFormSelectors(); renderAll();
   } catch(e) {
-    errEl.textContent = 'Login error: ' + e.message;
+    errEl.textContent = 'Login error: ' + (e.message || e);
     errEl.style.display = 'block';
   } finally {
     btn.textContent = 'Sign in →'; btn.disabled = false;
@@ -898,7 +903,7 @@ async function initApp() {
     await loadData();
     document.getElementById('loadingOverlay').classList.remove('active');
     hideLoginScreen();
-    initControls(); fillFormSelectors(); renderAll();
+    fillFormSelectors(); renderAll();
   } catch(e) {
     document.getElementById('loadingOverlay').classList.remove('active');
     showLoginScreen();
@@ -2062,8 +2067,7 @@ async function saveWfForSite() {
 }
 
 /* ── Boot ── */
-document.getElementById('loginBtn').addEventListener('click', doLogin);
-document.getElementById('loginPass').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
+initControls();
 document.getElementById('addWfStepBtn')?.addEventListener('click', addWfStep);
 document.getElementById('resetWfBtn')?.addEventListener('click', resetWfSteps);
 document.getElementById('saveWfBtn')?.addEventListener('click', saveWfForSite);
