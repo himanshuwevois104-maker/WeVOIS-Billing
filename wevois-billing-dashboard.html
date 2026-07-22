@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>WeVois • Billing Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="/supabase-config.js"></script>
+<script src="supabase-config.js"></script>
 <style>
   :root{
     color-scheme: light;
@@ -179,6 +179,19 @@
   .age.warn{background:var(--warn-bg);color:var(--warn)}
   .age.bad{background:var(--bad-bg);color:var(--bad)}
   .age.done{background:var(--good-bg);color:var(--good)}
+  /* debtor ageing buckets */
+  .age.g0{background:rgba(22,163,74,.14);color:#16a34a}
+  .age.g1{background:rgba(234,138,12,.16);color:#c9770a}
+  .age.g2{background:rgba(146,80,27,.18);color:#92501b}
+  .age.g3{background:rgba(220,38,38,.16);color:#dc2626}
+  .age.gpaid{background:var(--surface-2);color:var(--ink-2)}
+  .ageing-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:0 0 14px}
+  .ageing-strip .ac{border:1px solid var(--border);border-left-width:4px;border-radius:10px;
+    padding:9px 12px;background:var(--surface-2)}
+  .ageing-strip .ac .rng{font-size:11px;font-weight:750;text-transform:uppercase;letter-spacing:.3px}
+  .ageing-strip .ac .cnt{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1;margin-top:2px}
+  .ageing-strip .ac .amt{font-size:11.5px;color:var(--ink-2);margin-top:1px}
+  .ageing-strip .ac .ml{font-size:10.5px;color:var(--ink-2);margin-top:4px}
 
   /* ---------- Table ---------- */
   .tbl-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px}
@@ -303,6 +316,8 @@
     <div class="user-badge" id="userBadge" style="display:none">
       <span>👤</span><strong id="userBadgeName"></strong>
     </div>
+    <button class="btn" id="cityReqBtn" style="display:none">🏙 Request city change</button>
+    <button class="btn" id="adminBtn" style="display:none">⚙ Manage users</button>
     <button class="btn primary" id="addBtn">＋ Add / Update Bill</button>
     <button class="btn" id="logoutBtn" style="display:none">Sign out</button>
     <button class="btn icon-btn" id="themeBtn" title="Toggle light / dark">🌙</button>
@@ -430,6 +445,7 @@
         <p class="cap" style="margin:0" id="tblCount"></p>
       </div>
     </div>
+    <div class="ageing-strip" id="ageingStrip"></div>
     <div style="overflow-x:auto">
       <table id="siteTable">
         <thead>
@@ -438,8 +454,11 @@
             <th data-sort="region">Region</th>
             <th data-sort="billed" class="num">Gross billed</th>
             <th data-sort="penalty" class="num">Penalty</th>
+            <th data-sort="gst" class="num">GST</th>
+            <th data-sort="tds" class="num">TDS</th>
             <th data-sort="net" class="num">Net payable</th>
             <th data-sort="status">Stage</th>
+            <th data-sort="debt">Debtor ageing</th>
             <th data-sort="age">Days</th>
             <th data-sort="note">Notesheet</th>
           </tr>
@@ -462,7 +481,10 @@
         <h3 id="drillTitle"></h3>
         <p id="drillSub"></p>
       </div>
-      <button class="close" data-close>×</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn" id="flagBtn" style="display:none" onclick="raiseFlag()">🚩 Raise flag</button>
+        <button class="close" data-close>×</button>
+      </div>
     </div>
     <div class="drill-kpis" id="drillKpis"></div>
     <div class="chartbox" id="drillChart"></div>
@@ -500,8 +522,16 @@
         <input type="number" id="fBilled" min="0" step="1000" placeholder="e.g. 2450000">
       </div>
       <div>
-        <label for="fPenalty">Penalty / deduction (₹)</label>
+        <label for="fPenalty">Penalty deduction (₹)</label>
         <input type="number" id="fPenalty" min="0" step="1000" placeholder="e.g. 85000">
+      </div>
+      <div>
+        <label for="fGst">GST deduction (₹)</label>
+        <input type="number" id="fGst" min="0" step="1000" placeholder="e.g. 44100">
+      </div>
+      <div>
+        <label for="fTds">TDS deduction (₹)</label>
+        <input type="number" id="fTds" min="0" step="1000" placeholder="e.g. 24500">
       </div>
       <div>
         <label for="fStatus">Approval stage</label>
@@ -537,6 +567,75 @@
     <div class="form-actions">
       <button class="btn" data-close>Cancel</button>
       <button class="btn primary" id="saveBtn">Save bill</button>
+    </div>
+  </div>
+</div>
+
+<!-- Admin: manage users -->
+<div class="overlay" id="adminOverlay">
+  <div class="modal wide">
+    <div class="modal-head">
+      <div><h3>Manage users &amp; access</h3><p>Create logins and assign roles + sites. Admin only.</p></div>
+      <button class="close" data-close>×</button>
+    </div>
+
+    <div class="form-grid">
+      <div><label for="auName">Full name</label><input type="text" id="auName" placeholder="e.g. Ramesh Kumar"></div>
+      <div><label for="auEmail">Email (login ID)</label><input type="text" id="auEmail" placeholder="name@wevois.com"></div>
+      <div><label for="auPass">Temp password</label><input type="text" id="auPass" placeholder="min 6 characters"></div>
+      <div><label for="auRole">Role</label><select id="auRole"></select></div>
+      <div class="full" id="auSitesWrap">
+        <label>Assign sites <span class="hint" style="font-weight:500;text-transform:none;letter-spacing:0">— for Billing / Site Managers</span></label>
+        <div id="auSites" style="display:grid;grid-template-columns:repeat(2,1fr);gap:1px 18px;max-height:200px;overflow:auto;border:1px solid var(--border);border-radius:9px;padding:9px 11px;background:var(--surface-2)"></div>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn primary" id="auCreate">Create login</button>
+    </div>
+
+    <div id="siteEditor" style="display:none;margin-top:14px;border:1px solid var(--border);border-radius:12px;padding:14px;background:var(--surface-2)">
+      <h2 style="font-size:13px;margin:0 0 8px">Edit assigned sites</h2>
+      <div id="seSites" style="display:grid;grid-template-columns:repeat(2,1fr);gap:1px 18px;max-height:220px;overflow:auto"></div>
+      <div class="form-actions" style="margin-top:12px">
+        <button class="btn" id="seCancel">Cancel</button>
+        <button class="btn primary" id="seSave">Save sites</button>
+      </div>
+    </div>
+
+    <h2 style="font-size:14px;margin:24px 0 10px">Existing users</h2>
+    <div style="overflow-x:auto"><table class="mini-table" id="userTable"></table></div>
+
+    <h2 style="font-size:14px;margin:26px 0 10px">Cities</h2>
+    <div class="form-grid">
+      <div><label for="ncName">City name</label><input type="text" id="ncName" placeholder="e.g. Kota"></div>
+      <div><label for="ncRegion">Region</label><input type="text" id="ncRegion" placeholder="e.g. Rajasthan"></div>
+    </div>
+    <div class="form-actions"><button class="btn primary" id="ncAdd">Add city</button></div>
+    <div style="overflow-x:auto"><table class="mini-table" id="cityTable"></table></div>
+
+    <h2 style="font-size:14px;margin:26px 0 10px">City change requests <span class="hint" style="font-weight:500;text-transform:none;letter-spacing:0">— raised by VP / CEO</span></h2>
+    <div id="cityReqList"></div>
+  </div>
+</div>
+
+<!-- Leadership: request a city change -->
+<div class="overlay" id="cityReqOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <div><h3>Request a city change</h3><p>VP / CEO — the admin will review &amp; approve.</p></div>
+      <button class="close" data-close>×</button>
+    </div>
+    <div class="form-grid">
+      <div class="full"><label for="crKind">Request type</label>
+        <select id="crKind"><option value="add">Add a new city</option><option value="delete">Remove a city</option></select></div>
+      <div id="crName_w"><label for="crName">City name</label><input type="text" id="crName" placeholder="e.g. Kota"></div>
+      <div id="crRegion_w"><label for="crRegion">Region</label><input type="text" id="crRegion" placeholder="e.g. Rajasthan"></div>
+      <div class="full" id="crSite_w" style="display:none"><label for="crSite">City to remove</label><select id="crSite"></select></div>
+      <div class="full"><label for="crReason">Reason</label><input type="text" id="crReason" placeholder="Why this change is needed"></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn" data-close>Cancel</button>
+      <button class="btn primary" id="crSubmit">Submit request</button>
     </div>
   </div>
 </div>
@@ -587,6 +686,19 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let currentUser = null;
 let sites       = [];
 let records     = {};
+let flags       = [];
+let flagMap     = {};
+let drillSiteId = null;
+const WRITER_ROLES     = ['accounts','admin'];            // may create / edit bills
+const LEADERSHIP_ROLES = ['leadership','admin'];          // VP & CEO — may raise flags
+const canWrite = () => WRITER_ROLES.includes(currentUser?.role);
+const canFlag  = () => LEADERSHIP_ROLES.includes(currentUser?.role);
+const flagKey  = (sid, mk) => sid + '|' + mk;
+const ROLE_META = [
+  ['accounts','Accounts team'], ['billing_manager','Billing Manager'],
+  ['site_manager','Site Manager'], ['leadership','VP / CEO'], ['admin','Admin']
+];
+let editingSitesFor = null;
 
 /* ---- Transform Supabase bill row → frontend record ---- */
 function transformBill(b) {
@@ -600,7 +712,9 @@ function transformBill(b) {
     reported:  true,
     billed:    b.billed,
     penalty:   b.penalty,
-    net:       b.billed - b.penalty,
+    gst:       b.gst || 0,
+    tds:       b.tds || 0,
+    net:       b.billed - b.penalty - (b.gst||0) - (b.tds||0),
     status:    b.status,
     dates,
     holdSince: b.hold_since ? new Date(b.hold_since).getTime() : null,
@@ -613,9 +727,10 @@ function transformBill(b) {
 /* ---- Load all data from Supabase ---- */
 async function loadData() {
   const keys = MONTHS.map(m => m.key);
-  const [{ data: sitesData, error: se }, { data: billsData, error: be }] = await Promise.all([
+  const [{ data: sitesData, error: se }, { data: billsData, error: be }, { data: flagsData }] = await Promise.all([
     sb.from('sites').select('*').order('region').order('name'),
-    sb.from('bills').select('*').in('month_key', keys)
+    sb.from('bills').select('*').in('month_key', keys),
+    sb.from('bill_flags').select('*').eq('status', 'open')
   ]);
   if (se) { toast('Failed to load sites: ' + se.message); return; }
   if (be) { toast('Failed to load bills: ' + be.message); return; }
@@ -630,6 +745,9 @@ async function loadData() {
     if (!records[b.site_id]) records[b.site_id] = {};
     records[b.site_id][b.month_key] = transformBill(b);
   });
+  flags   = flagsData || [];
+  flagMap = {};
+  flags.forEach(f => { flagMap[flagKey(f.site_id, f.month_key)] = f; });
 }
 
 /* ---- Auth UI ---- */
@@ -749,6 +867,33 @@ function dateTitle(rec) {
   const parts = STAGES.filter(k => rec.dates[k] != null).map(k => k + ': ' + fmtD(rec.dates[k]));
   if (rec.holdSince) parts.push('On hold since: ' + fmtD(rec.holdSince));
   return parts.join('  ·  ');
+}
+
+/* ---- debtor ageing buckets ---- */
+const DEBT_BUCKETS = [
+  { key:'g0', min:0,  max:30,       range:'0–30 days',  color:'#16a34a', label:'Healthy',     mail:'Appreciation mail' },
+  { key:'g1', min:31, max:60,       range:'31–60 days', color:'#c9770a', label:'Alert',       mail:'Alert mail · clarification needed' },
+  { key:'g2', min:61, max:90,       range:'61–90 days', color:'#92501b', label:'Ultra alert', mail:'Ultra-alert mail' },
+  { key:'g3', min:91, max:Infinity, range:'90+ days',   color:'#dc2626', label:'Critical',    mail:'Daily 8 AM mail · reason required' }
+];
+// outstanding age = days since the bill was raised (Submitted) until it is Paid
+function debtorDays(rec) {
+  if (!rec || !rec.reported || rec.status === 'Paid') return null;
+  const start = rec.dates?.Submitted ?? lastStageDate(rec);
+  if (start == null) return null;
+  return Math.max(0, Math.floor((Date.now() - start) / DAY));
+}
+function debtBucket(rec) {
+  const d = debtorDays(rec);
+  if (d == null) return null;
+  return DEBT_BUCKETS.find(b => d >= b.min && d <= b.max) || DEBT_BUCKETS[DEBT_BUCKETS.length-1];
+}
+function ageingCell(rec) {
+  if (!rec || !rec.reported) return '<span class="note-none">—</span>';
+  if (rec.status === 'Paid') return '<span class="age gpaid" title="Settled">✓ settled</span>';
+  const b = debtBucket(rec), d = debtorDays(rec);
+  if (!b) return '<span class="note-none">—</span>';
+  return `<span class="age ${b.key}" title="${b.range} · ${b.mail}">${b.range} · ${d}d</span>`;
 }
 
 /* ============================================================
@@ -970,6 +1115,24 @@ function statusBadge(status) {
   const cls = status==='On Hold' ? 'b-Hold' : ('b-'+status);
   return `<span class="badge ${cls}"><span class="dot" style="background:${map[status]}"></span>${status}</span>`;
 }
+function renderAgeingStrip(rows) {
+  const el = document.getElementById('ageingStrip');
+  if (!el) return;
+  const agg = DEBT_BUCKETS.map(b => ({ b, count:0, amt:0 }));
+  rows.forEach(r => {
+    const bk = debtBucket(r.rec);
+    if (!bk) return;
+    const slot = agg.find(a => a.b.key === bk.key);
+    slot.count++; slot.amt += (r.net || 0);
+  });
+  el.innerHTML = agg.map(a => `
+    <div class="ac" style="border-left-color:${a.b.color}">
+      <div class="rng" style="color:${a.b.color}">${a.b.range}</div>
+      <div class="cnt">${a.count}<span style="font-size:12px;font-weight:600;color:var(--ink-2)"> site${a.count===1?'':'s'}</span></div>
+      <div class="amt">${short(a.amt)} outstanding</div>
+      <div class="ml">✉ ${a.b.mail}</div>
+    </div>`).join('');
+}
 function renderTable() {
   const mk = state.month;
   document.getElementById('tblMonth').textContent = MONTHS.find(m=>m.key===mk).label;
@@ -977,8 +1140,8 @@ function renderTable() {
     const rec = records[s.id]?.[mk] || { reported: false };
     return { id:s.id, name:s.name, region:s.region, rec,
       billed:rec.reported?rec.billed:null, penalty:rec.reported?rec.penalty:null,
-      net:rec.reported?rec.net:null, status:rec.reported?rec.status:null,
-      mode:rec.reported?rec.mode:null, age:ageSortVal(rec), note:rec.reported?rec.note:null };
+      net:rec.reported?rec.net:null, gst:rec.reported?rec.gst:null, tds:rec.reported?rec.tds:null, status:rec.reported?rec.status:null,
+      mode:rec.reported?rec.mode:null, age:ageSortVal(rec), debt:(debtorDays(rec)??-1), note:rec.reported?rec.note:null };
   });
   if (state.region!=='all') rows=rows.filter(r=>r.region===state.region);
   if (state.status!=='all') {
@@ -997,14 +1160,18 @@ function renderTable() {
   });
   const reported = rows.filter(r=>r.status!==null).length;
   document.getElementById('tblCount').textContent = `${rows.length} sites shown · ${reported} reported`;
+  renderAgeingStrip(rows);
   document.getElementById('tblBody').innerHTML = rows.map(r => `
-    <tr data-site="${r.id}">
-      <td><div class="site-name">${r.name}</div></td>
+    <tr data-site="${r.id}"${(() => { const b=debtBucket(r.rec); return b?` style="box-shadow:inset 4px 0 0 ${b.color}"`:''; })()}>
+      <td><div class="site-name">${flagMap[flagKey(r.id, mk)] ? `<span title="Flagged: ${flagMap[flagKey(r.id, mk)].note.replace(/"/g,'&quot;')}">🚩 </span>` : ''}${r.name}</div></td>
       <td><span class="site-region">${r.region}</span></td>
       <td class="num">${r.billed!=null?rupees(r.billed):'—'}</td>
       <td class="num" style="color:${r.penalty?'var(--penalty)':'inherit'}">${r.penalty!=null?(r.penalty?'−'+rupees(r.penalty):'₹0'):'—'}</td>
+      <td class="num" style="color:${r.gst?'var(--penalty)':'inherit'}">${r.gst!=null?(r.gst?'−'+rupees(r.gst):'₹0'):'—'}</td>
+      <td class="num" style="color:${r.tds?'var(--penalty)':'inherit'}">${r.tds!=null?(r.tds?'−'+rupees(r.tds):'₹0'):'—'}</td>
       <td class="num" style="font-weight:650">${r.net!=null?rupees(r.net):'—'}</td>
       <td title="${dateTitle(r.rec)}">${statusBadge(r.status)}${r.status==='Paid'&&r.mode?`<div class="site-region" style="margin-top:2px">via ${r.mode}</div>`:''}</td>
+      <td>${ageingCell(r.rec)}</td>
       <td>${ageCell(r.rec)}</td>
       <td>${r.note?`<span class="note-chip" data-note="${r.id}">📎 View</span>`:(r.status?'<span class="note-none">— none</span>':'<span class="note-none">—</span>')}</td>
     </tr>`
@@ -1021,9 +1188,13 @@ function renderTable() {
    Drill-down — loads site history from API
    ============================================================ */
 async function openDrill(siteId) {
+  drillSiteId = siteId;
   const s = sites.find(x => x.id === siteId);
+  const openFlag = flagMap[flagKey(siteId, state.month)];
   document.getElementById('drillTitle').textContent = s.name;
-  document.getElementById('drillSub').textContent   = s.region + ' · 12-month billing history';
+  document.getElementById('drillSub').textContent   = s.region + ' · 12-month billing history'
+    + (openFlag ? '  ·  🚩 FLAGGED: ' + openFlag.note : '');
+  document.getElementById('flagBtn').style.display = canFlag() ? '' : 'none';
 
   const keys = MONTHS.map(m => m.key);
   const { data: billsData } = await sb.from('bills').select('*').eq('site_id', siteId).in('month_key', keys);
@@ -1046,14 +1217,17 @@ async function openDrill(siteId) {
     { name:'Net payable',  color:'var(--net)',    values:net }
   ]);
   document.getElementById('drillTable').innerHTML =
-    `<thead><tr><th>Month</th><th class="num">Billed</th><th class="num">Penalty</th><th class="num">Net</th><th>Stage</th><th>Days</th><th>Notesheet</th></tr></thead><tbody>` +
+    `<thead><tr><th>Month</th><th class="num">Billed</th><th class="num">Penalty</th><th class="num">GST</th><th class="num">TDS</th><th class="num">Net</th><th>Stage</th><th>Debtor ageing</th><th>Days</th><th>Notesheet</th></tr></thead><tbody>` +
     MONTHS.slice().reverse().map(m => {
       const r = siteRecs[m.key] || { reported: false };
       return `<tr><td>${m.label}</td>
         <td class="num">${r.reported?rupees(r.billed):'—'}</td>
         <td class="num" style="color:${r.reported&&r.penalty?'var(--penalty)':'inherit'}">${r.reported?(r.penalty?'−'+rupees(r.penalty):'₹0'):'—'}</td>
+        <td class="num" style="color:${r.reported&&r.gst?'var(--penalty)':'inherit'}">${r.reported?(r.gst?'−'+rupees(r.gst):'₹0'):'—'}</td>
+        <td class="num" style="color:${r.reported&&r.tds?'var(--penalty)':'inherit'}">${r.reported?(r.tds?'−'+rupees(r.tds):'₹0'):'—'}</td>
         <td class="num">${r.reported?rupees(r.net):'—'}</td>
         <td title="${dateTitle(r)}">${statusBadge(r.reported?r.status:null)}${r.reported&&r.status==='Paid'&&r.mode?`<div class="site-region" style="margin-top:2px">via ${r.mode}</div>`:''}</td>
+        <td>${ageingCell(r)}</td>
         <td>${ageCell(r)}</td>
         <td>${r.reported&&r.note?`<span class="note-chip" data-note2="${siteId}" data-mk="${m.key}">📎 View</span>`:'<span class="note-none">—</span>'}</td></tr>`;
     }).join('') + `</tbody>`;
@@ -1063,36 +1237,26 @@ async function openDrill(siteId) {
   openOverlay('drillOverlay');
 }
 
-  const billed=[], net=[]; let totBilled=0, totPen=0, totNet=0;
-  MONTHS.forEach(m => {
-    const r = siteRecs[m.key];
-    billed.push(r?.reported?r.billed:0); net.push(r?.reported?r.net:0);
-    if (r?.reported) { totBilled+=r.billed; totPen+=r.penalty; totNet+=r.net; }
-  });
-  document.getElementById('drillKpis').innerHTML = `
-    <div class="dk"><div class="l">12-mo gross billed</div><div class="v">${short(totBilled)}</div></div>
-    <div class="dk"><div class="l">12-mo penalties</div><div class="v" style="color:var(--penalty)">${short(totPen)}</div></div>
-    <div class="dk"><div class="l">12-mo net payable</div><div class="v">${short(totNet)}</div></div>`;
-  lineChart('drillChart', MONTHS, [
-    { name:'Gross billed', color:'var(--billed)', values:billed, fill:true },
-    { name:'Net payable',  color:'var(--net)',    values:net }
-  ]);
-  document.getElementById('drillTable').innerHTML =
-    `<thead><tr><th>Month</th><th class="num">Billed</th><th class="num">Penalty</th><th class="num">Net</th><th>Stage</th><th>Days</th><th>Notesheet</th></tr></thead><tbody>` +
-    MONTHS.slice().reverse().map(m => {
-      const r = siteRecs[m.key] || { reported: false };
-      return `<tr><td>${m.label}</td>
-        <td class="num">${r.reported?rupees(r.billed):'—'}</td>
-        <td class="num" style="color:${r.reported&&r.penalty?'var(--penalty)':'inherit'}">${r.reported?(r.penalty?'−'+rupees(r.penalty):'₹0'):'—'}</td>
-        <td class="num">${r.reported?rupees(r.net):'—'}</td>
-        <td title="${dateTitle(r)}">${statusBadge(r.reported?r.status:null)}${r.reported&&r.status==='Paid'&&r.mode?`<div class="site-region" style="margin-top:2px">via ${r.mode}</div>`:''}</td>
-        <td>${ageCell(r)}</td>
-        <td>${r.reported&&r.note?`<span class="note-chip" data-note2="${siteId}" data-mk="${m.key}">📎 View</span>`:'<span class="note-none">—</span>'}</td></tr>`;
-    }).join('') + `</tbody>`;
-  document.querySelectorAll('#drillTable .note-chip').forEach(c => {
-    c.addEventListener('click', () => openNote(+c.dataset.note2, c.dataset.mk));
-  });
-  openOverlay('drillOverlay');
+/* ============================================================
+   Raise flag — VP & CEO only
+   ============================================================ */
+async function raiseFlag() {
+  if (!canFlag())   { toast('Only VP / CEO can raise flags'); return; }
+  if (!drillSiteId) return;
+  const s  = sites.find(x => x.id === drillSiteId);
+  const mk = state.month;
+  const note = prompt('Raise a flag for ' + (s?.name || '') + ' — ' + (MONTHS.find(m=>m.key===mk)?.label || mk) + '\n\nDescribe the issue:');
+  if (!note || !note.trim()) return;
+  try {
+    const uid = (await sb.auth.getUser()).data.user?.id;
+    const { data, error } = await sb.from('bill_flags')
+      .insert({ site_id: drillSiteId, month_key: mk, note: note.trim(), raised_by: uid })
+      .select().single();
+    if (error) { toast('Flag failed: ' + error.message); return; }
+    flags.push(data); flagMap[flagKey(drillSiteId, mk)] = data;
+    toast('🚩 Flag raised — Accounts team will see it');
+    closeOverlays(); renderAll();
+  } catch (e) { toast('Flag failed: ' + e.message); }
 }
 
 /* ============================================================
@@ -1140,11 +1304,14 @@ function fillFormSelectors() {
   document.getElementById('fSite').innerHTML  = sites.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
   document.getElementById('fMonth').innerHTML = MONTHS.slice().reverse().map(m => `<option value="${m.key}">${m.label}</option>`).join('');
   const upd = () => {
-    const b=+document.getElementById('fBilled').value||0, p=+document.getElementById('fPenalty').value||0;
-    document.getElementById('fNet').value = rupees(Math.max(0,b-p));
+    const b=+document.getElementById('fBilled').value||0, p=+document.getElementById('fPenalty').value||0,
+          g=+document.getElementById('fGst').value||0, t=+document.getElementById('fTds').value||0;
+    document.getElementById('fNet').value = rupees(Math.max(0,b-p-g-t));
   };
   document.getElementById('fBilled').addEventListener('input',upd);
   document.getElementById('fPenalty').addEventListener('input',upd);
+  document.getElementById('fGst').addEventListener('input',upd);
+  document.getElementById('fTds').addEventListener('input',upd);
   document.getElementById('fStatus').addEventListener('change',syncModeField);
   document.getElementById('fNote').addEventListener('change', e => {
     const f=e.target.files[0]; if (!f) return;
@@ -1159,7 +1326,7 @@ function openForm() {
   document.getElementById('notePreview').style.display='none';
   document.getElementById('fNote').value='';
   document.getElementById('fMonth').value=state.month;
-  ['fBilled','fPenalty','fNet'].forEach(id=>document.getElementById(id).value='');
+  ['fBilled','fPenalty','fGst','fTds','fNet'].forEach(id=>document.getElementById(id).value='');
   const today=new Date();
   document.getElementById('fDate').value = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
   syncModeField();
@@ -1171,9 +1338,11 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
   const mk     = document.getElementById('fMonth').value;
   const billed = +document.getElementById('fBilled').value  || 0;
   const penalty= +document.getElementById('fPenalty').value || 0;
+  const gst    = +document.getElementById('fGst').value || 0;
+  const tds    = +document.getElementById('fTds').value || 0;
   const status = document.getElementById('fStatus').value;
   if (billed<=0)      { toast('Enter a gross billed amount'); return; }
-  if (penalty>billed) { toast("Penalty can't exceed billed amount"); return; }
+  if (penalty+gst+tds>billed) { toast("Deductions can't exceed billed amount"); return; }
 
   const dv    = document.getElementById('fDate').value;
   const stamp = dv ? new Date(dv+'T12:00:00').toISOString() : new Date().toISOString();
@@ -1205,7 +1374,7 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
     // Upsert bill record in Supabase
     const { data: result, error } = await sb.from('bills').upsert({
       site_id: sid, month_key: mk,
-      billed, penalty, status,
+      billed, penalty, gst, tds, status,
       payment_mode: status==='Paid' ? document.getElementById('fMode').value : (prev?.mode||null),
       notesheet_path,
       updated_by: (await sb.auth.getUser()).data.user?.id,
@@ -1261,6 +1430,25 @@ function initControls() {
   });
 
   document.getElementById('addBtn').addEventListener('click', openForm);
+  document.getElementById('adminBtn').addEventListener('click', openAdmin);
+  document.getElementById('auCreate').addEventListener('click', createUserAdmin);
+  document.getElementById('auRole').addEventListener('change', e => {
+    const scoped = ['billing_manager','site_manager'].includes(e.target.value);
+    document.getElementById('auSitesWrap').style.display = scoped ? '' : 'none';
+  });
+  document.getElementById('seSave').addEventListener('click', saveUserSites);
+  document.getElementById('seCancel').addEventListener('click', () => {
+    document.getElementById('siteEditor').style.display = 'none'; editingSitesFor = null;
+  });
+  document.getElementById('ncAdd').addEventListener('click', addCity);
+  document.getElementById('cityReqBtn').addEventListener('click', openCityReq);
+  document.getElementById('crSubmit').addEventListener('click', submitCityReq);
+  document.getElementById('crKind').addEventListener('change', e => {
+    const del = e.target.value === 'delete';
+    document.getElementById('crName_w').style.display   = del ? 'none' : '';
+    document.getElementById('crRegion_w').style.display = del ? 'none' : '';
+    document.getElementById('crSite_w').style.display   = del ? '' : 'none';
+  });
   document.getElementById('logoutBtn').addEventListener('click', () => { sb.auth.signOut().then(() => location.reload()); });
   document.getElementById('themeBtn').addEventListener('click', toggleTheme);
   document.getElementById('loginBtn').addEventListener('click', doLogin);
@@ -1286,9 +1474,261 @@ function renderCharts() {
   ]);
   barChart('penaltyChart', MONTHS, s.penalty, cssVar('--penalty'));
 }
-function renderAll() { renderKpis(); renderCharts(); renderFunnel(); renderModes(); renderTable(); }
+/* Role-based UI gating — hides write / flag controls the current role can't use */
+function applyRole() {
+  const role = currentUser?.role || 'admin';
+  const addBtn  = document.getElementById('addBtn');
+  const flagBtn = document.getElementById('flagBtn');
+  if (addBtn)  addBtn.style.display  = canWrite() ? '' : 'none';
+  if (flagBtn) flagBtn.style.display = canFlag()  ? '' : 'none';
+  const adminBtn = document.getElementById('adminBtn');
+  if (adminBtn) adminBtn.style.display = role === 'admin' ? '' : 'none';
+  const cityReqBtn = document.getElementById('cityReqBtn');
+  if (cityReqBtn) cityReqBtn.style.display = role === 'leadership' ? '' : 'none';
+  const ROLE_LABEL = {
+    accounts:'Accounts team · bill entry', billing_manager:'Billing Manager', site_manager:'Site Manager',
+    leadership:'VP / CEO · monitoring', admin:'Admin', executive:'Executive'
+  };
+  const sub = document.querySelector('.brand p');
+  if (sub) {
+    const of = flags.length;
+    sub.textContent = (ROLE_LABEL[role] || role)
+      + ' · ' + sites.length + ' site' + (sites.length===1?'':'s') + ' visible'
+      + (of ? ' · 🚩 ' + of + ' open flag' + (of===1?'':'s') : '');
+  }
+}
+function renderAll() { applyRole(); renderKpis(); renderCharts(); renderFunnel(); renderModes(); renderTable(); }
+
+/* ============================================================
+   Admin — create logins & assign roles / sites (admin only)
+   ============================================================ */
+function roleOptionsHtml(sel) {
+  return ROLE_META.map(([v,l]) => `<option value="${v}"${v===sel?' selected':''}>${l}</option>`).join('');
+}
+function siteCheckboxes(containerId, checkedIds) {
+  const set = new Set(checkedIds || []);
+  document.getElementById(containerId).innerHTML = sites.map(s =>
+    `<label style="display:flex;gap:7px;align-items:center;font-size:12px;font-weight:500;padding:2px 0;cursor:pointer">
+       <input type="checkbox" value="${s.id}" ${set.has(s.id)?'checked':''}> ${s.name} <span class="site-region">· ${s.region}</span>
+     </label>`).join('');
+}
+function checkedSiteIds(containerId) {
+  return [...document.querySelectorAll('#'+containerId+' input:checked')].map(i => +i.value);
+}
+
+async function openAdmin() {
+  document.getElementById('auRole').innerHTML = roleOptionsHtml('site_manager');
+  ['auName','auEmail','auPass'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('auSitesWrap').style.display = '';
+  siteCheckboxes('auSites', []);
+  document.getElementById('siteEditor').style.display = 'none';
+  editingSitesFor = null;
+  await loadUsers();
+  loadCities();
+  loadCityRequests();
+  openOverlay('adminOverlay');
+}
+
+async function loadUsers() {
+  const [{ data: profs }, { data: asg }] = await Promise.all([
+    sb.from('user_profiles').select('*').order('role'),
+    sb.from('site_assignments').select('*')
+  ]);
+  const byUser = {};
+  (asg || []).forEach(a => { (byUser[a.user_id] ||= []).push(a.site_id); });
+  window.__asgByUser = byUser;
+  const tbl = document.getElementById('userTable');
+  tbl.innerHTML = `<thead><tr><th>Name</th><th>Email / login</th><th>Role</th><th>Sites</th></tr></thead><tbody>` +
+    (profs || []).map(p => {
+      const ids = byUser[p.id] || [];
+      const scoped = p.role==='billing_manager' || p.role==='site_manager';
+      return `<tr>
+        <td>${p.full_name || '—'}</td>
+        <td class="site-region">${p.email || '—'}</td>
+        <td><select data-uid="${p.id}" class="roleSel" style="min-width:150px">${roleOptionsHtml(p.role)}</select></td>
+        <td>${scoped ? `${ids.length} site${ids.length===1?'':'s'} <span class="note-chip" data-editsites="${p.id}">✎ edit</span>` : '<span class="note-none">all sites</span>'}</td>
+      </tr>`;
+    }).join('') + `</tbody>`;
+  tbl.querySelectorAll('.roleSel').forEach(sel => sel.addEventListener('change', () => saveRole(sel.dataset.uid, sel.value)));
+  tbl.querySelectorAll('[data-editsites]').forEach(c => c.addEventListener('click', () => editUserSites(c.dataset.editsites)));
+}
+
+async function saveRole(uid, role) {
+  const { error } = await sb.from('user_profiles').update({ role }).eq('id', uid);
+  toast(error ? 'Update failed: ' + error.message : 'Role updated');
+  if (!error) loadUsers();
+}
+
+function editUserSites(uid) {
+  editingSitesFor = uid;
+  const ids = (window.__asgByUser || {})[uid] || [];
+  siteCheckboxes('seSites', ids);
+  document.getElementById('siteEditor').style.display = 'block';
+}
+
+async function saveUserSites() {
+  if (!editingSitesFor) return;
+  const ids = checkedSiteIds('seSites');
+  await sb.from('site_assignments').delete().eq('user_id', editingSitesFor);
+  if (ids.length) await sb.from('site_assignments').insert(ids.map(site_id => ({ user_id: editingSitesFor, site_id })));
+  toast('Sites updated');
+  document.getElementById('siteEditor').style.display = 'none';
+  editingSitesFor = null;
+  loadUsers();
+}
+
+async function createUserAdmin() {
+  const email     = document.getElementById('auEmail').value.trim();
+  const password  = document.getElementById('auPass').value;
+  const full_name = document.getElementById('auName').value.trim();
+  const role      = document.getElementById('auRole').value;
+  if (!email || !password)   { toast('Enter email and password'); return; }
+  if (password.length < 6)   { toast('Password must be 6+ characters'); return; }
+  const siteIds = ['billing_manager','site_manager'].includes(role) ? checkedSiteIds('auSites') : [];
+  const btn = document.getElementById('auCreate'); btn.textContent = 'Creating…'; btn.disabled = true;
+  try {
+    const { data, error } = await sb.functions.invoke('admin-create-user', {
+      body: { email, password, full_name, role, siteIds }
+    });
+    if (error || data?.error) { toast('Create failed: ' + (data?.error || error.message)); return; }
+    toast('Login created — ' + email);
+    ['auName','auEmail','auPass'].forEach(id => document.getElementById(id).value = '');
+    siteCheckboxes('auSites', []);
+    loadUsers();
+  } catch (e) { toast('Create failed: ' + e.message); }
+  finally { btn.textContent = 'Create login'; btn.disabled = false; }
+}
+
+/* ============================================================
+   Cities — admin CRUD + leadership requests
+   ============================================================ */
+async function refreshSites() {
+  const { data } = await sb.from('sites').select('*').order('region').order('name');
+  sites = (data || []).map(s => ({ id: s.id, name: s.name, region: s.region, base: 0 }));
+  const regions = [...new Set(sites.map(s => s.region))];
+  const rs = document.getElementById('regionSel');
+  const cur = rs.value;
+  rs.innerHTML = `<option value="all">All regions</option>` + regions.map(r => `<option>${r}</option>`).join('');
+  rs.value = [...rs.options].some(o => o.value === cur) ? cur : 'all';
+  if (rs.value === 'all') state.region = 'all';
+  renderAll();
+}
+
+async function addCity() {
+  const name   = document.getElementById('ncName').value.trim();
+  const region = document.getElementById('ncRegion').value.trim();
+  if (!name || !region) { toast('Enter city name and region'); return; }
+  const { error } = await sb.from('sites').insert({ name, region });
+  if (error) { toast('Add failed: ' + error.message); return; }
+  document.getElementById('ncName').value = ''; document.getElementById('ncRegion').value = '';
+  toast('City added — ' + name);
+  await refreshSites(); loadCities();
+}
+
+function loadCities() {
+  const tbl = document.getElementById('cityTable');
+  tbl.innerHTML = `<thead><tr><th>City</th><th>Region</th><th>Actions</th></tr></thead><tbody>` +
+    sites.map(s => `<tr>
+      <td><input type="text" value="${(s.name||'').replace(/"/g,'&quot;')}" data-id="${s.id}" class="cName" style="min-width:170px"></td>
+      <td><input type="text" value="${(s.region||'').replace(/"/g,'&quot;')}" data-id="${s.id}" class="cRegion" style="min-width:140px"></td>
+      <td><span class="note-chip" data-savecity="${s.id}">✎ save</span> &nbsp; <span class="note-chip" data-delcity="${s.id}" style="color:var(--bad)">🗑 delete</span></td>
+    </tr>`).join('') + `</tbody>`;
+  tbl.querySelectorAll('[data-savecity]').forEach(b => b.addEventListener('click', () => saveCity(+b.dataset.savecity)));
+  tbl.querySelectorAll('[data-delcity]').forEach(b => b.addEventListener('click', () => deleteCity(+b.dataset.delcity)));
+}
+
+async function saveCity(id) {
+  const name   = document.querySelector(`.cName[data-id="${id}"]`).value.trim();
+  const region = document.querySelector(`.cRegion[data-id="${id}"]`).value.trim();
+  if (!name || !region) { toast('Name and region required'); return; }
+  const { error } = await sb.from('sites').update({ name, region }).eq('id', id);
+  if (error) { toast('Save failed: ' + error.message); return; }
+  toast('City updated'); await refreshSites(); loadCities();
+}
+
+async function deleteCity(id) {
+  const s = sites.find(x => x.id === id);
+  if (!confirm('Delete “' + (s?.name || 'this city') + '”? This is blocked if it still has bills.')) return;
+  const { error } = await sb.from('sites').delete().eq('id', id);
+  if (error) { toast('Delete blocked — remove its bills first'); return; }
+  toast('City deleted'); await refreshSites(); loadCities();
+}
+
+async function loadCityRequests() {
+  const { data } = await sb.from('city_requests').select('*').order('created_at', { ascending: false });
+  window.__cityReqs = data || [];
+  const el = document.getElementById('cityReqList');
+  if (!window.__cityReqs.length) { el.innerHTML = `<p class="cap" style="margin:0">No requests yet.</p>`; return; }
+  const isAdmin = currentUser?.role === 'admin';
+  el.innerHTML = window.__cityReqs.map(r => {
+    const tag = r.kind === 'add' ? 'Add city' : 'Remove city';
+    const badge = r.status === 'pending' ? 'b-None' : (r.status === 'approved' ? 'b-Approved' : 'b-Hold');
+    const actions = (isAdmin && r.status === 'pending')
+      ? `<span class="note-chip" data-req-ok="${r.id}" style="color:var(--good)">✓ approve</span> &nbsp; <span class="note-chip" data-req-no="${r.id}" style="color:var(--bad)">✕ reject</span>`
+      : '';
+    return `<div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <span class="badge ${badge}">${r.status}</span>
+      <strong>${tag}:</strong> ${r.city_name || ''}${r.kind==='add' && r.region ? ' · ' + r.region : ''}
+      <span class="site-region">${r.reason ? '— ' + r.reason : ''}</span>
+      <span style="flex:1"></span>${actions}
+    </div>`;
+  }).join('');
+  el.querySelectorAll('[data-req-ok]').forEach(b => b.addEventListener('click', () => decideRequest(+b.dataset.reqOk, true)));
+  el.querySelectorAll('[data-req-no]').forEach(b => b.addEventListener('click', () => decideRequest(+b.dataset.reqNo, false)));
+}
+
+async function decideRequest(id, ok) {
+  const req = (window.__cityReqs || []).find(r => r.id === id);
+  if (!req) return;
+  if (ok) {
+    if (req.kind === 'add') {
+      const { error } = await sb.from('sites').insert({ name: req.city_name, region: req.region });
+      if (error) { toast('Could not add city: ' + error.message); return; }
+    } else {
+      const { error } = await sb.from('sites').delete().eq('id', req.target_site_id);
+      if (error) { toast('Delete blocked — city still has bills'); return; }
+    }
+  }
+  const uid = (await sb.auth.getUser()).data.user?.id;
+  await sb.from('city_requests').update({ status: ok ? 'approved' : 'rejected', decided_by: uid, decided_at: new Date().toISOString() }).eq('id', id);
+  toast(ok ? 'Request approved' : 'Request rejected');
+  await refreshSites(); loadCities(); loadCityRequests();
+}
+
+function openCityReq() {
+  document.getElementById('crKind').value = 'add';
+  document.getElementById('crName_w').style.display = '';
+  document.getElementById('crRegion_w').style.display = '';
+  document.getElementById('crSite_w').style.display = 'none';
+  ['crName','crRegion','crReason'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('crSite').innerHTML = sites.map(s => `<option value="${s.id}">${s.name} · ${s.region}</option>`).join('');
+  openOverlay('cityReqOverlay');
+}
+
+async function submitCityReq() {
+  const kind   = document.getElementById('crKind').value;
+  const reason = document.getElementById('crReason').value.trim();
+  const uid    = (await sb.auth.getUser()).data.user?.id;
+  let payload;
+  if (kind === 'add') {
+    const name   = document.getElementById('crName').value.trim();
+    const region = document.getElementById('crRegion').value.trim();
+    if (!name || !region) { toast('Enter city name and region'); return; }
+    payload = { kind, city_name: name, region, reason, requested_by: uid };
+  } else {
+    const sid = +document.getElementById('crSite').value;
+    const s = sites.find(x => x.id === sid);
+    if (!s) { toast('Pick a city to remove'); return; }
+    payload = { kind, target_site_id: sid, city_name: s.name, region: s.region, reason, requested_by: uid };
+  }
+  const { error } = await sb.from('city_requests').insert(payload);
+  if (error) { toast('Request failed: ' + error.message); return; }
+  toast('🏙 Request sent to admin');
+  closeOverlays();
+}
 
 /* ── Boot ── */
+document.getElementById('loginBtn').addEventListener('click', doLogin);
 document.getElementById('loginPass').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
 initApp();
 </script>
