@@ -1587,11 +1587,30 @@ async function createUserAdmin() {
   const siteIds = ['billing_manager','site_manager'].includes(role) ? checkedSiteIds('auSites') : [];
   const btn = document.getElementById('auCreate'); btn.textContent = 'Creating…'; btn.disabled = true;
   try {
-    const { data, error } = await sb.functions.invoke('admin-create-user', {
-      body: { email, password, full_name, role, siteIds }
+    // Step 1: Create the user via Supabase Auth signUp
+    const { data: signUpData, error: signUpErr } = await sb.auth.signUp({
+      email,
+      password,
+      options: { data: { full_name } }
     });
-    if (error || data?.error) { toast('Create failed: ' + (data?.error || error.message)); return; }
-    toast('Login created — ' + email);
+    if (signUpErr) { toast('Create failed: ' + signUpErr.message); return; }
+
+    const newUserId = signUpData?.user?.id;
+    if (!newUserId) { toast('User created — confirm email in Supabase Auth dashboard'); loadUsers(); return; }
+
+    // Step 2: Update profile with correct role and full_name (trigger creates it as 'executive' by default)
+    const { error: profileErr } = await sb.from('user_profiles')
+      .upsert({ id: newUserId, full_name: full_name || email.split('@')[0], role })
+      .eq('id', newUserId);
+    if (profileErr) { toast('User created but role update failed: ' + profileErr.message); }
+
+    // Step 3: Assign sites if executive role
+    if (siteIds.length) {
+      await sb.from('site_assignments').delete().eq('user_id', newUserId);
+      await sb.from('site_assignments').insert(siteIds.map(site_id => ({ user_id: newUserId, site_id })));
+    }
+
+    toast('✅ User created — ' + email);
     ['auName','auEmail','auPass'].forEach(id => document.getElementById(id).value = '');
     siteCheckboxes('auSites', []);
     loadUsers();
