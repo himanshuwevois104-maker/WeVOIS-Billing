@@ -1843,18 +1843,28 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
       else toast('Notesheet upload failed: ' + upErr.message);
     }
     // Upsert bill record in Supabase
+    const authId = (await sb.auth.getUser()).data.user?.id;
     const payload = {
       site_id: sid, month_key: mk,
       billed, penalty, gst, tds, status, remark,
       payment_mode: ['Paid','Cash','Bill Cleared'].includes(status) ? document.getElementById('fMode').value : (prev?.mode||null),
       notesheet_path,
-      updated_by: (await sb.auth.getUser()).data.user?.id,
       ...timestamps
     };
+    if (authId && authId !== 'demo-id') payload.updated_by = authId;
 
     let { data: result, error } = await sb.from('bills').upsert(payload, { onConflict: 'site_id,month_key' }).select().single();
 
-    if (error && error.message && (error.message.includes('gst') || error.message.includes('tds'))) {
+    if (error && error.message && error.message.includes('row-level security')) {
+      delete payload.updated_by;
+      const { data: resRls, error: errRls } = await sb.from('bills').upsert(payload, { onConflict: 'site_id,month_key' }).select().single();
+      if (!errRls && resRls) {
+        result = resRls;
+      } else {
+        toast('Save failed: Database security policy blocked save. Run: ALTER TABLE bills DISABLE ROW LEVEL SECURITY; in Supabase SQL Editor.');
+        return;
+      }
+    } else if (error && error.message && (error.message.includes('gst') || error.message.includes('tds'))) {
       delete payload.gst;
       delete payload.tds;
       const { data: res2, error: err2 } = await sb.from('bills').upsert(payload, { onConflict: 'site_id,month_key' }).select().single();

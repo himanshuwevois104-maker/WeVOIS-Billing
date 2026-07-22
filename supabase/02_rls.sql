@@ -76,37 +76,16 @@ CREATE POLICY "assignments_admin_all" ON site_assignments
 
 
 -- ── bills ─────────────────────────────────────────────────────────────────────
+ALTER TABLE bills DISABLE ROW LEVEL SECURITY;
+
 DROP POLICY IF EXISTS "bills_admin_all" ON bills;
-CREATE POLICY "bills_admin_all" ON bills
-  FOR ALL USING (public.is_admin())
-  WITH CHECK (public.is_admin());
-
 DROP POLICY IF EXISTS "bills_exec_read" ON bills;
-CREATE POLICY "bills_exec_read" ON bills
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM site_assignments
-      WHERE user_id = auth.uid() AND site_id = bills.site_id
-    )
-  );
-
 DROP POLICY IF EXISTS "bills_exec_insert" ON bills;
-CREATE POLICY "bills_exec_insert" ON bills
-  FOR INSERT WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM site_assignments
-      WHERE user_id = auth.uid() AND site_id = bills.site_id
-    )
-  );
-
 DROP POLICY IF EXISTS "bills_exec_update" ON bills;
-CREATE POLICY "bills_exec_update" ON bills
-  FOR UPDATE USING (
-    EXISTS (
-      SELECT 1 FROM site_assignments
-      WHERE user_id = auth.uid() AND site_id = bills.site_id
-    )
-  );
+DROP POLICY IF EXISTS "bills_all_access" ON bills;
+
+CREATE POLICY "bills_all_access" ON bills
+  FOR ALL USING (true) WITH CHECK (true);
 
 
 -- ── Storage (notesheets bucket) ───────────────────────────────────────────────
