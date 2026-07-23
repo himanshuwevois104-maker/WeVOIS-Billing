@@ -553,6 +553,7 @@
       </div>
     </div>
     <div class="form-actions">
+      <button type="button" class="btn danger" id="deleteBillBtn" style="display:none;margin-right:auto">🗑️ Delete Bill</button>
       <button class="btn" data-close>Cancel</button>
       <button class="btn primary" id="saveBtn">Save bill</button>
     </div>
@@ -1689,6 +1690,8 @@ function openFormForSite(siteId) {
   const mk = state.month;
   document.getElementById('fMonth').value = mk;
   const prev = records[siteId]?.[mk];
+  const delBtn = document.getElementById('deleteBillBtn');
+
   if (prev && prev.reported) {
     document.getElementById('fBilled').value = prev.billed || '';
     document.getElementById('fPenalty').value = prev.penalty || '';
@@ -1696,13 +1699,55 @@ function openFormForSite(siteId) {
     document.getElementById('fTds').value = prev.tds || '';
     document.getElementById('fStatus').value = prev.status || 'Bill Submmited';
     if (document.getElementById('fRemark')) document.getElementById('fRemark').value = prev.remark || '';
+    
+    if (delBtn && canWrite()) {
+      delBtn.style.display = 'inline-flex';
+      delBtn.onclick = () => handleDeleteBill(siteId, mk);
+    }
   } else {
     ['fBilled','fPenalty','fGst','fTds','fRemark'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
+    if (delBtn) delBtn.style.display = 'none';
   }
   syncModeField();
+}
+
+async function handleDeleteBill(siteId, monthKey) {
+  if (!canWrite()) { toast('Permission denied: Only Billing Manager / Admin can delete bills'); return; }
+  const s = sites.find(x => x.id === siteId);
+  const m = MONTHS.find(x => x.key === monthKey);
+  const siteName = s?.name || 'Site';
+  const monthLabel = m?.label || monthKey;
+
+  if (!confirm(`⚠️ Are you sure you want to DELETE the bill for ${siteName} (${monthLabel})?\n\nThis will permanently remove this monthly bill record.`)) {
+    return;
+  }
+
+  const delBtn = document.getElementById('deleteBillBtn');
+  if (delBtn) { delBtn.textContent = 'Deleting…'; delBtn.disabled = true; }
+
+  try {
+    const { error } = await sb.from('bills').delete().eq('site_id', siteId).eq('month_key', monthKey);
+    if (error) { toast('Delete failed: ' + error.message); return; }
+
+    if (records[siteId] && records[siteId][monthKey]) {
+      records[siteId][monthKey] = { reported: false };
+    }
+
+    toast(`🗑️ Bill deleted for ${siteName} (${monthLabel})`);
+    closeOverlays();
+    renderAll();
+
+    if (drillSiteId === siteId) {
+      openDrill(siteId);
+    }
+  } catch(e) {
+    toast('Delete failed: ' + e.message);
+  } finally {
+    if (delBtn) { delBtn.textContent = '🗑️ Delete Bill'; delBtn.disabled = false; }
+  }
 }
 
 /* ============================================================
@@ -1741,22 +1786,40 @@ async function openDrill(siteId) {
     { name:'Net payable',  color:'var(--net)',    values:net }
   ]);
   document.getElementById('drillTable').innerHTML =
-    `<thead><tr><th>Month</th><th class="num">Billed</th><th class="num">Penalty</th><th class="num">GST</th><th class="num">TDS</th><th class="num">Net</th><th>Stage</th><th>Debtor ageing</th><th>Days</th><th>Notesheet</th></tr></thead><tbody>` +
+    `<thead><tr><th>Month</th><th class="num">Billed</th><th class="num">Penalty</th><th class="num">GST</th><th class="num">TDS</th><th class="num">Net</th><th>Stage</th><th>Debtor ageing</th><th>Days</th><th>Notesheet</th><th>Actions</th></tr></thead><tbody>` +
     MONTHS.slice().reverse().map(m => {
       const r = siteRecs[m.key] || { reported: false };
-      return `<tr><td>${m.label}</td>
+      return `<tr><td><b>${m.label}</b></td>
         <td class="num">${r.reported?rupees(r.billed):'—'}</td>
         <td class="num" style="color:${r.reported&&r.penalty?'var(--penalty)':'inherit'}">${r.reported?(r.penalty?'−'+rupees(r.penalty):'₹0'):'—'}</td>
         <td class="num" style="color:${r.reported&&r.gst?'var(--penalty)':'inherit'}">${r.reported?(r.gst?'−'+rupees(r.gst):'₹0'):'—'}</td>
         <td class="num" style="color:${r.reported&&r.tds?'var(--penalty)':'inherit'}">${r.reported?(r.tds?'−'+rupees(r.tds):'₹0'):'—'}</td>
-        <td class="num">${r.reported?rupees(r.net):'—'}</td>
+        <td class="num" style="font-weight:700">${r.reported?rupees(r.net):'—'}</td>
         <td title="${dateTitle(r)}">${statusBadge(r.reported?r.status:null, siteId)}${r.reported&&r.status==='Paid'&&r.mode?`<div class="site-region" style="margin-top:2px">via ${r.mode}</div>`:''}</td>
         <td>${ageingCell(r)}</td>
         <td>${ageCell(r)}</td>
-        <td>${r.reported&&r.note?`<span class="note-chip" data-note2="${siteId}" data-mk="${m.key}">${r.note.toLowerCase().endsWith('.pdf') ? '📄 PDF' : '📎 View'}</span>`:'<span class="note-none">—</span>'}</td></tr>`;
+        <td>${r.reported&&r.note?`<span class="note-chip" data-note2="${siteId}" data-mk="${m.key}">${r.note.toLowerCase().endsWith('.pdf') ? '📄 PDF' : '📎 View'}</span>`:'<span class="note-none">—</span>'}</td>
+        <td>
+          ${canWrite() ? `<span class="note-chip" data-drilledit="${siteId}" data-mk="${m.key}" title="Edit figures for ${m.label}">✏️ Edit</span>` : ''}
+          ${canWrite() && r.reported ? `<span class="note-chip" data-drilldel="${siteId}" data-mk="${m.key}" style="color:var(--bad);margin-left:4px;border-color:var(--bad)" title="Delete bill for ${m.label}">🗑️ Delete</span>` : ''}
+        </td>
+      </tr>`;
     }).join('') + `</tbody>`;
-  document.querySelectorAll('#drillTable .note-chip').forEach(c => {
+
+  document.querySelectorAll('#drillTable [data-note2]').forEach(c => {
     c.addEventListener('click', () => openNote(+c.dataset.note2, c.dataset.mk));
+  });
+  document.querySelectorAll('#drillTable [data-drilledit]').forEach(c => {
+    c.addEventListener('click', () => {
+      state.month = c.dataset.mk;
+      document.getElementById('monthSel').value = c.dataset.mk;
+      openFormForSite(+c.dataset.drilledit);
+    });
+  });
+  document.querySelectorAll('#drillTable [data-drilldel]').forEach(c => {
+    c.addEventListener('click', () => {
+      handleDeleteBill(+c.dataset.drilldel, c.dataset.mk);
+    });
   });
   openOverlay('drillOverlay');
 }
@@ -2015,10 +2078,10 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
   const billed = +document.getElementById('fBilled').value  || 0;
   const prev   = records[sid]?.[mk];
 
-  const isBillingManager = currentUser?.role === 'billing_manager';
-  const penalty = isBillingManager ? (prev?.penalty || 0) : (+document.getElementById('fPenalty').value || 0);
-  const gst     = isBillingManager ? (prev?.gst || 0)     : (+document.getElementById('fGst').value || 0);
-  const tds     = isBillingManager ? (prev?.tds || 0)     : (+document.getElementById('fTds').value || 0);
+  // Billing Manager and Admin can edit/modify all fields (Billed, Penalty, GST, TDS)
+  const penalty = +document.getElementById('fPenalty').value || 0;
+  const gst     = +document.getElementById('fGst').value || 0;
+  const tds     = +document.getElementById('fTds').value || 0;
   const remark  = document.getElementById('fRemark')?.value.trim() || null;
 
   let status  = document.getElementById('fStatus').value;
