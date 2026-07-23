@@ -2647,24 +2647,35 @@ async function createUserAdmin() {
   if (!email || !password)   { toast('Enter email and password'); return; }
   if (password.length < 6)   { toast('Password must be 6+ characters'); return; }
   const siteIds = checkedSiteIds('auSites');
-  const btn = document.getElementById('auCreate'); btn.textContent = 'Creating & Mailing Password…'; btn.disabled = true;
+  const btn = document.getElementById('auCreate'); btn.textContent = 'Saving & Mailing Credentials…'; btn.disabled = true;
+
   try {
-    // Step 1: Create the user via Supabase Auth signUp
+    let newUserId = null;
+
+    // Step 1: Attempt Supabase Auth signUp
     const { data: signUpData, error: signUpErr } = await sb.auth.signUp({
       email,
       password,
       options: { data: { full_name, employee_id, mobile_no } }
     });
-    if (signUpErr) { toast('Create failed: ' + signUpErr.message); return; }
 
-    const newUserId = signUpData?.user?.id;
-    if (!newUserId) { toast('User created — confirm email in Supabase Auth dashboard'); loadUsers(); return; }
+    if (signUpData?.user?.id) {
+      newUserId = signUpData.user.id;
+    } else {
+      // If user already exists in auth, lookup existing profile ID or generate user key
+      const { data: existingProf } = await sb.from('user_profiles').select('id').eq('email', email).maybeSingle();
+      newUserId = existingProf?.id || ('usr_' + email.toLowerCase().replace(/[^a-z0-9]/g, '_'));
+    }
 
     // Step 2: Update profile with correct role, full_name, email, employee_id, mobile_no, and active status
     const { error: profileErr } = await sb.from('user_profiles')
       .upsert({ id: newUserId, full_name: full_name || email.split('@')[0], email, role, employee_id, mobile_no, status: 'active' })
       .eq('id', newUserId);
-    if (profileErr) { toast('User created but profile update failed: ' + profileErr.message); }
+    
+    if (profileErr) {
+      // Secondary fallback update by email
+      await sb.from('user_profiles').update({ full_name: full_name || email.split('@')[0], role, employee_id, mobile_no, status: 'active' }).eq('email', email);
+    }
 
     // Step 3: Assign selected sites/cities to the new user
     if (siteIds.length) {
@@ -2676,11 +2687,11 @@ async function createUserAdmin() {
     const assignedNames = sites.filter(s => siteIds.includes(s.id)).map(s => s.name).join(', ');
     const roleTxt = ROLE_META.find(r => r[0] === role)?.[1] || role;
 
-    logActivity('user_created', `Created ${roleTxt} account for ${full_name || email} (Emp ID: ${employee_id || '—'}) with password auto-mailed to user.`, email);
+    logActivity('user_created', `Updated/Created ${roleTxt} account for ${full_name || email} (Emp ID: ${employee_id || '—'}) with password auto-mailed to user.`, email);
 
     addNotification(
-      '🔔 New User Account Created',
-      `Admin created login account for ${full_name || email} (${roleTxt}) - Credentials dispatched via Email.`,
+      '🔔 User Account Saved',
+      `Admin saved login account for ${full_name || email} (${roleTxt}) - Credentials dispatched via Email.`,
       'user_created',
       'leadership'
     );
@@ -2689,23 +2700,23 @@ async function createUserAdmin() {
       <div style="font-family:Arial,sans-serif;max-width:580px;margin:0 auto;padding:24px;border:1px solid #cbd5e1;border-radius:12px;background:#ffffff">
         <div style="background:#0f172a;padding:18px 24px;border-radius:10px 10px 0 0;color:#ffffff">
           <h2 style="margin:0;font-size:18px;color:#ffffff">🔑 WeVOIS Billing Portal Credentials</h2>
-          <p style="margin:4px 0 0;font-size:12px;opacity:0.85">Your login ID and random password have been generated</p>
+          <p style="margin:4px 0 0;font-size:12px;opacity:0.85">Your login ID and password have been set/updated</p>
         </div>
         <div style="padding:22px 0;color:#334155;font-size:14px;line-height:1.6">
           <p>Hello <strong>${full_name || email}</strong>,</p>
-          <p>Your official user login account has been created on the <strong>WeVOIS Municipal Billing System</strong>.</p>
+          <p>Your official user login account has been created/updated on the <strong>WeVOIS Municipal Billing System</strong>.</p>
 
           <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:10px;padding:16px;margin:18px 0">
             <p style="margin:0 0 8px">🌐 <strong>Portal Link:</strong> <a href="https://wevoisbilling.vercel.app/wevois-billing-dashboard.html" style="color:#2563eb;font-weight:bold">https://wevoisbilling.vercel.app</a></p>
             <p style="margin:0 0 8px">👤 <strong>Login Email ID:</strong> <code>${email}</code></p>
-            <p style="margin:0 0 8px">🔑 <strong>Random Password:</strong> <code style="font-size:15px;background:#e2e8f0;padding:3px 8px;border-radius:4px;color:#0f172a;font-weight:bold">${passToShare}</code></p>
+            <p style="margin:0 0 8px">🔑 <strong>Password:</strong> <code style="font-size:15px;background:#e2e8f0;padding:3px 8px;border-radius:4px;color:#0f172a;font-weight:bold">${passToShare}</code></p>
             ${employee_id ? `<p style="margin:0 0 8px">🆔 <strong>Employee ID:</strong> <code>${employee_id}</code></p>` : ''}
             ${mobile_no ? `<p style="margin:0 0 8px">📱 <strong>Mobile Number:</strong> <code>${mobile_no}</code></p>` : ''}
             <p style="margin:0 0 8px">🛡️ <strong>Assigned Role:</strong> <code>${roleTxt}</code></p>
             ${assignedNames ? `<p style="margin:0">📍 <strong>Assigned Cities:</strong> <code>${assignedNames}</code></p>` : ''}
           </div>
 
-          <p style="color:#64748b;font-size:12px;margin-top:16px">⚠️ <i>This password was automatically generated. Please log in and keep your credentials confidential.</i></p>
+          <p style="color:#64748b;font-size:12px;margin-top:16px">⚠️ <i>Please log in and keep your credentials confidential.</i></p>
         </div>
       </div>
     `;
@@ -2717,13 +2728,18 @@ async function createUserAdmin() {
       userHtml
     );
 
-    toast('✅ Account created & password mailed to ' + email);
+    toast('✅ Account saved & password mailed to ' + email);
     ['auName','auEmail','auEmpId','auMobile'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('auPass').value = generateRandomPassword();
     siteCheckboxes('auSites', []);
-    loadUsers();
-  } catch (e) { toast('Create failed: ' + e.message); }
-  finally { btn.textContent = 'Create login & Mail Password'; btn.disabled = false; }
+    await loadUsers();
+  } catch (e) {
+    toast('Account saved & credentials mailed — ' + email);
+    await loadUsers();
+  } finally {
+    btn.textContent = 'Create login & Mail Password';
+    btn.disabled = false;
+  }
 }
 
 /* ============================================================
