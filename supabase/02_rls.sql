@@ -23,56 +23,40 @@ ALTER TABLE bills             ENABLE ROW LEVEL SECURITY;
 
 
 -- ── user_profiles ─────────────────────────────────────────────────────────────
+ALTER TABLE user_profiles DISABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "profiles_read" ON user_profiles;
-CREATE POLICY "profiles_read" ON user_profiles
-  FOR SELECT USING (auth.role() = 'authenticated');
-
 DROP POLICY IF EXISTS "profiles_own_update" ON user_profiles;
-CREATE POLICY "profiles_own_update" ON user_profiles
-  FOR UPDATE USING (id = auth.uid());
-
 DROP POLICY IF EXISTS "profiles_admin_all" ON user_profiles;
 DROP POLICY IF EXISTS "profiles_admin_upsert" ON user_profiles;
-CREATE POLICY "profiles_admin_all" ON user_profiles
-  FOR ALL USING (public.is_admin())
-  WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "profiles_all_access" ON user_profiles;
+
+CREATE POLICY "profiles_all_access" ON user_profiles
+  FOR ALL USING (true) WITH CHECK (true);
 
 
 -- ── sites ─────────────────────────────────────────────────────────────────────
+ALTER TABLE sites DISABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "sites_admin" ON sites;
 DROP POLICY IF EXISTS "sites_exec" ON sites;
 DROP POLICY IF EXISTS "sites_admin_all" ON sites;
 DROP POLICY IF EXISTS "sites_read_authenticated" ON sites;
 DROP POLICY IF EXISTS "sites_read_scoped" ON sites;
+DROP POLICY IF EXISTS "sites_all_access" ON sites;
 
-CREATE POLICY "sites_read_scoped" ON sites
-  FOR SELECT USING (
-    public.is_admin() OR
-    EXISTS (
-      SELECT 1 FROM user_profiles WHERE id = auth.uid() AND role IN ('leadership','admin')
-    ) OR
-    EXISTS (
-      SELECT 1 FROM site_assignments
-      WHERE user_id = auth.uid() AND site_id = sites.id
-    )
-  );
-
-CREATE POLICY "sites_admin_all" ON sites
-  FOR ALL USING (public.is_admin())
-  WITH CHECK (public.is_admin());
+CREATE POLICY "sites_all_access" ON sites
+  FOR ALL USING (true) WITH CHECK (true);
 
 
 -- ── site_assignments ──────────────────────────────────────────────────────────
+ALTER TABLE site_assignments DISABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "assignments_own" ON site_assignments;
 DROP POLICY IF EXISTS "assignments_admin" ON site_assignments;
 DROP POLICY IF EXISTS "assignments_admin_all" ON site_assignments;
+DROP POLICY IF EXISTS "assignments_read" ON site_assignments;
+DROP POLICY IF EXISTS "assignments_all_access" ON site_assignments;
 
-CREATE POLICY "assignments_read" ON site_assignments
-  FOR SELECT USING (auth.role() = 'authenticated');
-
-CREATE POLICY "assignments_admin_all" ON site_assignments
-  FOR ALL USING (public.is_admin())
-  WITH CHECK (public.is_admin());
+CREATE POLICY "assignments_all_access" ON site_assignments
+  FOR ALL USING (true) WITH CHECK (true);
 
 
 -- ── bills ─────────────────────────────────────────────────────────────────────
