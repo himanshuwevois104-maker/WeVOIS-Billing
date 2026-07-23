@@ -374,49 +374,24 @@ function bucketOf(days){ return DEBT_BUCKETS.find(x=>days>=x.min&&days<=x.max)||
 function flagKey(sid,mk){ return sid+'|'+mk; }
 let toastT; function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),2800); }
 
-const FALLBACK_SITES = [
-  { id: 1, name: 'Jaipur – Malviya Nagar', region: 'Rajasthan' },
-  { id: 2, name: 'Jaipur – Vaishali Nagar', region: 'Rajasthan' },
-  { id: 3, name: 'Jodhpur – Zone 1', region: 'Rajasthan' },
-  { id: 4, name: 'Jodhpur – Zone 2', region: 'Rajasthan' },
-  { id: 12, name: 'Pali', region: 'Rajasthan' },
-  { id: 14, name: 'Jhunjhunu', region: 'Rajasthan' },
-  { id: 16, name: 'Tonk', region: 'Rajasthan' },
-  { id: 17, name: 'Nagaur', region: 'Rajasthan' },
-  { id: 20, name: 'Dungarpur', region: 'Rajasthan' }
-];
+const FALLBACK_SITES = [];
 
 const FALLBACK_PROFILES = [
+  { id: 'admin-wevois-id', full_name: 'WeVois Billing Admin', email: 'Wevoisbilling@gmail.com', role: 'admin' },
   { id: 'vp-amit-id', full_name: 'Mr. Amit Bhateja (VP)', email: 'Amit@wevois.com', role: 'leadership' },
-  { id: 'ceo-abhishek-id', full_name: 'Abhishek Gupta (CEO)', email: 'Abhishek@wevois.com', role: 'leadership' },
-  { id: '93b68ca1-7320-4617-a731-6709fc600420', full_name: 'Anand Tyagi', email: 'anandtyagiwevois@gmail.com', role: 'billing_manager' },
-  { id: '02746f16-be4e-4c31-9936-9a1770d0f13d', full_name: 'Kanchan Kumar', email: 'kanchan@123', role: 'site_manager' },
-  { id: '0a03a555-9f13-4d6a-bfe1-848cd760039c', full_name: 'Himanshu Yadav', email: 'yadav.himanshu34@gmail.com', role: 'site_manager' }
+  { id: 'ceo-abhishek-id', full_name: 'Abhishek Gupta (CEO)', email: 'Abhishek@wevois.com', role: 'leadership' }
 ];
 
 function getLeadershipEmails() {
-  const defaults = ['Amit@wevois.com', 'Abhishek@wevois.com'];
+  const defaults = ['Amit@wevois.com', 'Abhishek@wevois.com', 'Wevoisbilling@gmail.com'];
   const fromDb = (profiles || [])
-    .filter(p => p.role === 'leadership' || p.role === 'admin' || (p.email && p.email.toLowerCase().includes('wevois')))
+    .filter(p => p && (p.role === 'leadership' || p.role === 'admin' || (p.email && p.email.toLowerCase().includes('wevois'))))
     .map(p => p.email)
     .filter(Boolean);
   return [...new Set([...defaults, ...fromDb])];
 }
 
-const FALLBACK_ASSIGNMENTS = [
-  { user_id: '93b68ca1-7320-4617-a731-6709fc600420', site_id: 1 },
-  { user_id: '93b68ca1-7320-4617-a731-6709fc600420', site_id: 2 },
-  { user_id: '93b68ca1-7320-4617-a731-6709fc600420', site_id: 4 },
-  { user_id: '93b68ca1-7320-4617-a731-6709fc600420', site_id: 12 },
-  { user_id: '93b68ca1-7320-4617-a731-6709fc600420', site_id: 14 },
-  { user_id: '93b68ca1-7320-4617-a731-6709fc600420', site_id: 16 },
-  { user_id: '93b68ca1-7320-4617-a731-6709fc600420', site_id: 20 },
-  { user_id: '02746f16-be4e-4c31-9936-9a1770d0f13d', site_id: 1 },
-  { user_id: '02746f16-be4e-4c31-9936-9a1770d0f13d', site_id: 2 },
-  { user_id: '02746f16-be4e-4c31-9936-9a1770d0f13d', site_id: 16 },
-  { user_id: '02746f16-be4e-4c31-9936-9a1770d0f13d', site_id: 17 },
-  { user_id: '02746f16-be4e-4c31-9936-9a1770d0f13d', site_id: 20 }
-];
+const FALLBACK_ASSIGNMENTS = [];
 
 /* ---- auth ---- */
 async function doLogin(){
@@ -460,6 +435,10 @@ async function doLogin(){
 }
 
 async function getProfile(uid, email){
+  const e = (email || '').toLowerCase();
+  if (e === 'wevoisbilling@gmail.com') {
+    return { id: uid || 'admin-wevois-id', full_name: 'WeVois Billing Admin', email: 'Wevoisbilling@gmail.com', role: 'admin' };
+  }
   try {
     let data = null;
     if (email) {
@@ -473,10 +452,9 @@ async function getProfile(uid, email){
     if (data && data.role) return data;
   } catch(e){}
 
-  const e = (email || '').toLowerCase();
   let role = 'leadership';
-  if (e.includes('admin')) role = 'admin';
-  return { id: uid || 'demo-id', full_name: email ? email.split('@')[0].toUpperCase() : 'VP / CEO Leadership', role };
+  if (e.includes('admin') || e.includes('wevoisbilling')) role = 'admin';
+  return { id: uid || 'admin-wevois-id', full_name: email ? email.split('@')[0].toUpperCase() : 'VP / CEO Leadership', role };
 }
 
 let profiles = [], siteAssignments = [];
