@@ -835,11 +835,21 @@ async function loadData() {
   ];
 
   profiles = (profsData && profsData.length) ? profsData : [
+    { id: 'vp-amit-id', full_name: 'Mr. Amit Bhateja (VP)', email: 'Amit@wevois.com', role: 'leadership' },
+    { id: 'ceo-abhishek-id', full_name: 'Abhishek Gupta (CEO)', email: 'Abhishek@wevois.com', role: 'leadership' },
     { id: '93b68ca1-7320-4617-a731-6709fc600420', full_name: 'Anand Tyagi', email: 'anandtyagiwevois@gmail.com', role: 'billing_manager' },
     { id: '02746f16-be4e-4c31-9936-9a1770d0f13d', full_name: 'Kanchan Kumar', email: 'kanchan@123', role: 'site_manager' },
-    { id: '0a03a555-9f13-4d6a-bfe1-848cd760039c', full_name: 'Himanshu Yadav', email: 'yadav.himanshu34@gmail.com', role: 'site_manager' },
-    { id: 'c264e99e-0b7a-4fa7-9f63-4ea566e43314', full_name: 'VP / CEO Leadership', email: 'vp@wevois.com', role: 'leadership' }
+    { id: '0a03a555-9f13-4d6a-bfe1-848cd760039c', full_name: 'Himanshu Yadav', email: 'yadav.himanshu34@gmail.com', role: 'site_manager' }
   ];
+
+function getLeadershipEmails() {
+  const defaults = ['Amit@wevois.com', 'Abhishek@wevois.com'];
+  const fromDb = (profiles || [])
+    .filter(p => p.role === 'leadership' || p.role === 'admin' || (p.email && p.email.toLowerCase().includes('wevois')))
+    .map(p => p.email)
+    .filter(Boolean);
+  return [...new Set([...defaults, ...fromDb])];
+}
   siteAssignments = (asgData && asgData.length) ? asgData : [
     { user_id: '93b68ca1-7320-4617-a731-6709fc600420', site_id: 1 },
     { user_id: '93b68ca1-7320-4617-a731-6709fc600420', site_id: 2 },
@@ -2036,6 +2046,40 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
     }
     if (!records[sid]) records[sid]={};
     records[sid][mk] = transformBill(result);
+
+    const siteObj = sites.find(s => s.id === sid);
+    const monthObj = MONTHS.find(m => m.key === mk);
+    const uRole = (currentUser?.role || '').toLowerCase();
+    const leadershipRecipients = getLeadershipEmails();
+
+    if (uRole === 'billing_manager') {
+      addNotification(
+        '📄 Monthly Bill Uploaded',
+        `${currentUser?.full_name || 'Billing Manager HQ'} uploaded bill PDF copy for ${siteObj?.name || 'Site'} (${monthObj?.label || mk}).`,
+        'bill_uploaded',
+        'site_manager',
+        sid
+      );
+      sendEmail(
+        leadershipRecipients,
+        `📄 Bill Uploaded: ${siteObj?.name || 'Site'} (${monthObj?.label || mk})`,
+        `Billing Manager ${currentUser?.full_name || ''} has uploaded the monthly bill PDF copy for ${siteObj?.name || ''} (${monthObj?.label || mk}).\nGross Billed: ₹${billed.toLocaleString('en-IN')}\nSender: ${emailConfig.senderEmail}`
+      );
+    } else if (uRole === 'site_manager' || uRole === 'executive') {
+      addNotification(
+        '✏️ CRM Ground Progress Update',
+        `${currentUser?.full_name || 'Ground CRM'} updated stage to "${status}" for ${siteObj?.name || 'Site'} (${monthObj?.label || mk}).`,
+        'stage_updated',
+        'leadership',
+        sid
+      );
+      sendEmail(
+        leadershipRecipients,
+        `✏️ CRM Progress Update: ${siteObj?.name || 'Site'} → ${status}`,
+        `CRM Ground Manager ${currentUser?.full_name || ''} updated approval stage to "${status}" for ${siteObj?.name || ''} (${monthObj?.label || mk}).\nGross Billed: ₹${billed.toLocaleString('en-IN')}\nDeductions: Penalty ₹${penalty.toLocaleString('en-IN')}, GST ₹${gst.toLocaleString('en-IN')}, TDS ₹${tds.toLocaleString('en-IN')}\nSender: ${emailConfig.senderEmail}`
+      );
+    }
+
     closeOverlays(); renderAll();
     toast('Saved — '+sites.find(s=>s.id===sid)?.name+' · '+MONTHS.find(m=>m.key===mk)?.label);
   } catch (e) {
@@ -2243,7 +2287,13 @@ async function createUserAdmin() {
       'leadership'
     );
 
-    toast('✅ User created — ' + email);
+    sendEmail(
+      [email, ...getLeadershipEmails()],
+      `🔔 WeVois Billing Account Created: ${full_name || email}`,
+      `Your WeVois Billing account has been created by Admin.\n\nName: ${full_name || email}\nRole: ${roleTxt}\nAssigned Sites: ${assignedNames || 'None'}\n\nLogin Portal: https://wevoisbilling.vercel.app/wevois-billing-dashboard.html\nSender: ${emailConfig.senderEmail}`
+    );
+
+    toast('✅ User created & email sent — ' + email);
     ['auName','auEmail','auPass'].forEach(id => document.getElementById(id).value = '');
     siteCheckboxes('auSites', []);
     loadUsers();

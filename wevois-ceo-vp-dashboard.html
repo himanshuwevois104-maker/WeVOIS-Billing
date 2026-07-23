@@ -387,11 +387,21 @@ const FALLBACK_SITES = [
 ];
 
 const FALLBACK_PROFILES = [
+  { id: 'vp-amit-id', full_name: 'Mr. Amit Bhateja (VP)', email: 'Amit@wevois.com', role: 'leadership' },
+  { id: 'ceo-abhishek-id', full_name: 'Abhishek Gupta (CEO)', email: 'Abhishek@wevois.com', role: 'leadership' },
   { id: '93b68ca1-7320-4617-a731-6709fc600420', full_name: 'Anand Tyagi', email: 'anandtyagiwevois@gmail.com', role: 'billing_manager' },
   { id: '02746f16-be4e-4c31-9936-9a1770d0f13d', full_name: 'Kanchan Kumar', email: 'kanchan@123', role: 'site_manager' },
-  { id: '0a03a555-9f13-4d6a-bfe1-848cd760039c', full_name: 'Himanshu Yadav', email: 'yadav.himanshu34@gmail.com', role: 'site_manager' },
-  { id: 'c264e99e-0b7a-4fa7-9f63-4ea566e43314', full_name: 'VP / CEO Leadership', email: 'vp@wevois.com', role: 'leadership' }
+  { id: '0a03a555-9f13-4d6a-bfe1-848cd760039c', full_name: 'Himanshu Yadav', email: 'yadav.himanshu34@gmail.com', role: 'site_manager' }
 ];
+
+function getLeadershipEmails() {
+  const defaults = ['Amit@wevois.com', 'Abhishek@wevois.com'];
+  const fromDb = (profiles || [])
+    .filter(p => p.role === 'leadership' || p.role === 'admin' || (p.email && p.email.toLowerCase().includes('wevois')))
+    .map(p => p.email)
+    .filter(Boolean);
+  return [...new Set([...defaults, ...fromDb])];
+}
 
 const FALLBACK_ASSIGNMENTS = [
   { user_id: '93b68ca1-7320-4617-a731-6709fc600420', site_id: 1 },
@@ -893,7 +903,17 @@ async function submitFlag(){
   if(error){ toast('Flag failed: '+error.message); return; }
   flags.push(data); flagMap[flagKey(flagTarget.sid,flagTarget.mk)] = data;
   document.getElementById('flagOverlay').classList.remove('open');
-  toast('🚩 Flag raised');
+
+  // Send automated email alert to Mr. Amit Bhateja, Abhishek Gupta & Leadership
+  const s = siteById(flagTarget.sid);
+  const recipients = getLeadershipEmails();
+  sendEmail(
+    recipients,
+    `🚩 CRITICAL FLAG: ${s?.name || 'Site'} (${monthLabel(flagTarget.mk)})`,
+    `A critical flag was raised by Leadership for site ${s?.name || ''} (${monthLabel(flagTarget.mk)}).\n\nIssue Description:\n${note}\n\nSender Email: ${emailConfig.senderEmail}\nRecipients: ${recipients.join(', ')}`
+  );
+
+  toast('🚩 Flag raised & email dispatched');
   renderKpis(); renderOverdue();
 }
 async function decideReq(id, ok){
