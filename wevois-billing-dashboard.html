@@ -594,7 +594,10 @@
     <h2 style="font-size:14px;margin:24px 0 10px">Existing users</h2>
     <div style="overflow-x:auto"><table class="mini-table" id="userTable"></table></div>
 
-    <h2 style="font-size:14px;margin:26px 0 10px">Cities</h2>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin:26px 0 10px">
+      <h2 style="font-size:14px;margin:0">Cities</h2>
+      <button class="btn danger" id="purgeSitesBtn" onclick="purgeDemoSites()" style="font-size:11.5px;padding:5px 10px">🗑️ Purge All Sites</button>
+    </div>
     <div class="form-grid">
       <div><label for="ncName">City name</label><input type="text" id="ncName" placeholder="e.g. Kota"></div>
       <div><label for="ncRegion">Region</label><input type="text" id="ncRegion" placeholder="e.g. Rajasthan"></div>
@@ -2537,10 +2540,48 @@ async function saveCity(id) {
 
 async function deleteCity(id) {
   const s = sites.find(x => x.id === id);
-  if (!confirm('Delete “' + (s?.name || 'this city') + '”? This is blocked if it still has bills.')) return;
-  const { error } = await sb.from('sites').delete().eq('id', id);
-  if (error) { toast('Delete blocked — remove its bills first'); return; }
-  toast('City deleted'); await refreshSites(); loadCities();
+  const name = s?.name || 'this city';
+  if (!confirm(`⚠️ Are you sure you want to PERMANENTLY DELETE "${name}" and all its monthly bills from the portal?`)) return;
+
+  try {
+    await sb.from('bills').delete().eq('site_id', id);
+    await sb.from('bill_flags').delete().eq('site_id', id);
+    await sb.from('site_assignments').delete().eq('site_id', id);
+    await sb.from('city_requests').delete().eq('site_id', id);
+
+    const { error } = await sb.from('sites').delete().eq('id', id);
+    if (error) { toast('Delete failed: ' + error.message); return; }
+
+    sites = sites.filter(x => x.id !== id);
+    delete records[id];
+    toast(`🗑️ Site "${name}" deleted`);
+    await refreshSites();
+    loadCities();
+    renderAll();
+  } catch(e) {
+    toast('Delete failed: ' + e.message);
+  }
+}
+
+async function purgeDemoSites() {
+  if (!confirm('⚠️ Are you sure you want to PURGE & DELETE all municipal sites and bills from the portal?')) return;
+  try {
+    const allSiteIds = sites.map(s => s.id);
+    if (allSiteIds.length) {
+      await sb.from('bills').delete().in('site_id', allSiteIds);
+      await sb.from('bill_flags').delete().in('site_id', allSiteIds);
+      await sb.from('site_assignments').delete().in('site_id', allSiteIds);
+      await sb.from('sites').delete().in('id', allSiteIds);
+    }
+    sites = [];
+    records = {};
+    toast('🧹 All sites deleted cleanly');
+    await refreshSites();
+    loadCities();
+    renderAll();
+  } catch(e) {
+    toast('Purge failed: ' + e.message);
+  }
 }
 
 async function loadCityRequests() {
