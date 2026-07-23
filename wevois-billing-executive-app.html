@@ -83,38 +83,38 @@
 
   /* ---------- App bar ---------- */
   .appbar{position:sticky;top:0;z-index:30;background:var(--surface);
-    border-bottom:1px solid var(--border);padding:12px 16px;display:flex;align-items:center;gap:10px}
-  .logo{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--brand),var(--brand-2));
-    display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:15px;letter-spacing:.5px;flex:none}
-  .appbar h1{font-size:15px;margin:0;font-weight:750;letter-spacing:-.2px}
-  .appbar p{margin:1px 0 0;font-size:10.5px;color:var(--muted)}
+    border-bottom:1px solid var(--border);padding:max(14px, env(safe-area-inset-top, 14px)) 16px 12px;display:flex;align-items:center;gap:10px;box-shadow:0 2px 8px rgba(0,0,0,0.03)}
+  .logo{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,var(--brand),var(--brand-2));
+    display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:16px;letter-spacing:.5px;flex:none;box-shadow:0 3px 8px rgba(27,175,122,.25)}
+  .appbar h1{font-size:15px;margin:0;font-weight:750;letter-spacing:-.2px;line-height:1.2}
+  .appbar p{margin:2px 0 0;font-size:11px;color:var(--muted);line-height:1.2}
   .spacer{flex:1}
   .icon-btn{width:36px;height:36px;border:1px solid var(--border);background:var(--surface);
     border-radius:10px;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit}
   .logout-btn{font-size:11px;font-weight:700;border:1px solid var(--border);background:var(--surface);
-    color:var(--muted);border-radius:10px;padding:6px 10px;cursor:pointer;font-family:inherit}
+    color:var(--muted);border-radius:10px;padding:7px 11px;cursor:pointer;font-family:inherit}
 
   /* ---------- Who / sites ---------- */
-  .whobar{padding:12px 16px 4px}
-  .who{font-size:11.5px;color:var(--muted);font-weight:650;margin-bottom:8px}
+  .whobar{padding:14px 16px 6px;max-width:520px;margin:0 auto;width:100%}
+  .who{font-size:12px;color:var(--muted);font-weight:650;margin-bottom:10px;line-height:1.3}
   .who b{color:var(--ink-2)}
-  .chips{display:flex;gap:7px;overflow-x:auto;padding-bottom:6px;-webkit-overflow-scrolling:touch}
+  .chips{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 8px 2px;-webkit-overflow-scrolling:touch}
   .chips::-webkit-scrollbar{display:none}
   .chip{flex:none;border:1px solid var(--border);background:var(--surface);color:var(--ink-2);
-    font-size:12px;font-weight:650;padding:7px 13px;border-radius:20px;cursor:pointer;font-family:inherit;transition:.15s}
-  .chip.active{background:var(--brand);border-color:var(--brand);color:#fff}
+    font-size:12.5px;font-weight:650;padding:8px 15px;border-radius:20px;cursor:pointer;font-family:inherit;transition:all .15s ease;box-shadow:0 1px 3px rgba(0,0,0,.03)}
+  .chip.active{background:var(--brand);border-color:var(--brand);color:#fff;box-shadow:0 2px 6px rgba(27,175,122,.3)}
 
-  .monthrow{display:flex;align-items:center;gap:8px;padding:6px 16px 10px}
-  .monthrow label{font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
-  .monthrow select{flex:1;font-family:inherit;font-size:13px;font-weight:650;padding:9px 12px;border-radius:11px;
-    border:1px solid var(--border);background:var(--surface);color:var(--ink)}
+  .monthrow{display:flex;align-items:center;gap:10px;padding:4px 16px 14px;max-width:520px;margin:0 auto;width:100%}
+  .monthrow label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  .monthrow select{flex:1;font-family:inherit;font-size:13.5px;font-weight:650;padding:10px 14px;border-radius:12px;
+    border:1px solid var(--border);background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.03)}
 
-  main{flex:1;padding:0 14px 96px;display:flex;flex-direction:column;gap:12px}
+  main{flex:1;padding:0 16px 100px;display:flex;flex-direction:column;gap:16px;max-width:520px;margin:0 auto;width:100%}
 
-  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
-    padding:15px 16px;box-shadow:var(--shadow)}
-  .card h2{font-size:13.5px;margin:0 0 2px;font-weight:720}
-  .card .cap{font-size:11px;color:var(--muted);margin:0 0 10px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:18px;
+    padding:18px;box-shadow:0 2px 10px rgba(0,0,0,.04)}
+  .card h2{font-size:14.5px;margin:0 0 3px;font-weight:750}
+  .card .cap{font-size:11.5px;color:var(--muted);margin:0 0 12px}
 
   /* ---------- Bill card ---------- */
   .bill-top{display:flex;align-items:flex-start;gap:10px;margin-bottom:12px}
