@@ -655,6 +655,7 @@ async function doLogin() {
     if (state_site) state.site = state_site;
     initMonthSel();
     renderAll();
+    initRealtimeSync();
     document.getElementById('whoText').innerHTML =
       `Logged in as <b>${profile?.full_name || email}</b> · ${currentUser?.role || 'user'}`;
   } catch(e) {
@@ -678,12 +679,39 @@ async function initApp() {
     if (sites.length > 0) state.site = sites[0].id;
     initMonthSel();
     renderAll();
+    initRealtimeSync();
     document.getElementById('whoText').innerHTML =
       `Logged in as <b>${profile?.full_name || session.user.email}</b> · ${profile?.role || 'user'}`;
   } catch(e) {
     document.getElementById('loadingScreen').classList.remove('active');
     showLoginScreen();
   }
+}
+
+/* ── Realtime & Auto Background Sync (Automatic updates without manual refresh) ── */
+let realtimeSubscribed = false;
+function initRealtimeSync() {
+  if (realtimeSubscribed) return;
+  realtimeSubscribed = true;
+  try {
+    sb.channel('executive-realtime-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bills' }, async () => {
+        await loadData();
+        renderAll();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, async () => {
+        await loadNotifications();
+      })
+      .subscribe();
+  } catch(e) {}
+  
+  setInterval(async () => {
+    if (currentUser) {
+      await loadData();
+      renderAll();
+      loadNotifications();
+    }
+  }, 5000);
 }
 
 /* ============================================================

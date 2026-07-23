@@ -976,6 +976,7 @@ async function doLogin() {
     await loadData();
     document.getElementById('loadingOverlay').classList.remove('active');
     fillFormSelectors(); renderAll();
+    initRealtimeSync();
   } catch(e) {
     errEl.textContent = 'Login error: ' + (e.message || e);
     errEl.style.display = 'block';
@@ -998,10 +999,49 @@ async function initApp() {
     document.getElementById('loadingOverlay').classList.remove('active');
     hideLoginScreen();
     fillFormSelectors(); renderAll();
+    initRealtimeSync();
   } catch(e) {
     document.getElementById('loadingOverlay').classList.remove('active');
     showLoginScreen();
   }
+}
+
+/* ── Realtime & Auto Background Sync (Automatic updates without manual refresh) ── */
+let realtimeSubscribed = false;
+function initRealtimeSync() {
+  if (realtimeSubscribed) return;
+  realtimeSubscribed = true;
+  try {
+    sb.channel('portal-realtime-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bills' }, async () => {
+        await loadData();
+        renderAll();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'sites' }, async () => {
+        await loadData();
+        renderAll();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bill_flags' }, async () => {
+        await loadData();
+        renderAll();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'city_requests' }, async () => {
+        await loadData();
+        renderAll();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, async () => {
+        await loadNotifications();
+      })
+      .subscribe();
+  } catch(e) {}
+  
+  setInterval(async () => {
+    if (currentUser) {
+      await loadData();
+      renderAll();
+      loadNotifications();
+    }
+  }, 5000);
 }
 
 let notifications = [];

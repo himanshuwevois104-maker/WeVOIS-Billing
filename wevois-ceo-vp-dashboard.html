@@ -454,7 +454,7 @@ async function doLogin(){
     document.getElementById('loginScreen').style.display='none';
     document.getElementById('app').style.display='';
     document.getElementById('userBadge').textContent = (prof.full_name||'Leadership')+' · '+(role==='admin'?'Admin':'VP / CEO');
-    await loadData(); renderAll();
+    await loadData(); renderAll(); initRealtimeSync();
   }catch(e){ err.textContent='Login error: '+e.message; err.style.display='block'; }
   finally{ btn.textContent='Sign in'; btn.disabled=false; }
 }
@@ -1156,9 +1156,44 @@ document.getElementById('sendTestEmailBtn')?.addEventListener('click', handleSen
       document.getElementById('app').style.display='';
       document.getElementById('userBadge').textContent = (prof.full_name||'Leadership')+' · '+(prof.role==='admin'?'Admin':'VP / CEO');
       await loadData(); await loadNotifications(); renderAll();
+      initRealtimeSync();
     }
   }
 })();
+
+/* ── Realtime & Auto Background Sync (Automatic updates without manual refresh) ── */
+let realtimeSubscribed = false;
+function initRealtimeSync() {
+  if (realtimeSubscribed) return;
+  realtimeSubscribed = true;
+  try {
+    sb.channel('leadership-realtime-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bills' }, async () => {
+        await loadData();
+        renderAll();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bill_flags' }, async () => {
+        await loadData();
+        renderAll();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'city_requests' }, async () => {
+        await loadData();
+        renderAll();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, async () => {
+        await loadNotifications();
+      })
+      .subscribe();
+  } catch(e) {}
+  
+  setInterval(async () => {
+    if (currentUser) {
+      await loadData();
+      renderAll();
+      loadNotifications();
+    }
+  }, 5000);
+}
 </script>
 
 <!-- Email Settings & Dispatcher Modal -->
