@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WeVois • CEO / VP Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="supabase-config.js"></script>
+<style>
+  :root{
+    color-scheme: light;
+    --plane:#efeeea; --surface:#fcfcfb; --surface-2:#f4f3ef;
+    --ink:#0b0b0b; --ink-2:#52514e; --muted:#898781;
+    --grid:#e1e0d9; --axis:#c3c2b7; --border:rgba(11,11,11,.10);
+    --billed:#2a78d6; --net:#1baf7a; --penalty:#eb6834;
+    --good:#006300; --good-bg:rgba(12,163,12,.12);
+    --warn:#b26a00; --warn-bg:rgba(250,178,25,.16);
+    --bad:#c0392b; --bad-bg:rgba(208,59,59,.12);
+    --brand:#0f7a4f; --brand-2:#14915e;
+    --g0:#16a34a; --g1:#c9770a; --g2:#92501b; --g3:#dc2626;
+    --shadow:0 1px 2px rgba(11,11,11,.05),0 8px 24px rgba(11,11,11,.06);
+    --radius:16px;
+  }
+  html[data-theme="dark"]{
+    color-scheme: dark;
+    --plane:#0a0a0a; --surface:#1a1a19; --surface-2:#222220;
+    --ink:#ffffff; --ink-2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10);
+    --billed:#3987e5; --net:#199e70; --penalty:#d95926;
+    --good:#0ca30c; --good-bg:rgba(12,163,12,.16);
+    --warn:#fab219; --warn-bg:rgba(250,178,25,.14);
+    --bad:#e66767; --bad-bg:rgba(230,103,103,.16);
+    --brand:#19b374; --brand-2:#14915e;
+    --g0:#22c55e; --g1:#e0900f; --g2:#b3652a; --g3:#ef4444;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.5);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--plane);
+    color:var(--ink);font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+  a{color:var(--brand)}a:hover{color:var(--brand-2)}
+  .wrap{max-width:1240px;margin:0 auto;padding:22px 22px 60px}
+
+  /* header */
+  header.top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:20px}
+  .logo{width:42px;height:42px;border-radius:11px;background:linear-gradient(135deg,var(--brand),var(--brand-2));
+    display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:18px;flex-shrink:0}
+  header.top h1{margin:0;font-size:20px;font-weight:780;letter-spacing:-.2px}
+  header.top p{margin:2px 0 0;font-size:12.5px;color:var(--ink-2)}
+  .spacer{flex:1}
+  .btn{border:1px solid var(--border);background:var(--surface);color:var(--ink);font:inherit;
+    font-size:13px;font-weight:600;padding:8px 13px;border-radius:10px;cursor:pointer;white-space:nowrap}
+  .btn:hover{background:var(--surface-2)}
+  .btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+  .btn.primary:hover{background:var(--brand-2)}
+  .badge-user{font-size:12px;font-weight:600;color:var(--ink-2);background:var(--surface);
+    border:1px solid var(--border);border-radius:999px;padding:6px 12px}
+
+  /* KPI cards */
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+  .kpi{background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--accent,var(--brand));
+    border-radius:var(--radius);padding:15px 16px;box-shadow:var(--shadow)}
+  .kpi .lab{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--ink-2)}
+  .kpi .val{font-size:27px;font-weight:820;letter-spacing:-.5px;margin-top:5px;font-variant-numeric:tabular-nums}
+  .kpi .sub{font-size:11.5px;color:var(--muted);margin-top:3px}
+
+  .grid2{display:grid;grid-template-columns:1.35fr 1fr;gap:16px;margin-bottom:16px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:17px 18px;box-shadow:var(--shadow)}
+  .card h2{margin:0 0 3px;font-size:15px;font-weight:740}
+  .card .cap{margin:0 0 14px;font-size:12px;color:var(--muted)}
+
+  /* ageing */
+  .agebar{display:flex;height:26px;border-radius:8px;overflow:hidden;margin-bottom:14px;border:1px solid var(--border)}
+  .agebar span{display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:750;min-width:0}
+  .agerow{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--border)}
+  .agerow:first-of-type{border-top:0}
+  .dot{width:11px;height:11px;border-radius:3px;flex-shrink:0}
+  .agerow .nm{font-size:13px;font-weight:600}
+  .agerow .ml{font-size:11px;color:var(--muted)}
+  .agerow .rt{margin-left:auto;text-align:right}
+  .agerow .rt b{font-size:15px;font-variant-numeric:tabular-nums}
+  .agerow .rt small{display:block;font-size:11px;color:var(--muted)}
+
+  /* region bars */
+  .rbar{margin:11px 0}
+  .rbar .rhead{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px}
+  .rbar .rhead b{font-weight:700}
+  .rbar .track{height:9px;border-radius:6px;background:var(--surface-2);overflow:hidden}
+  .rbar .fill{height:100%;border-radius:6px;background:var(--brand)}
+
+  /* table */
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--border);white-space:nowrap}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--ink-2);font-weight:700}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  tbody tr:hover{background:var(--surface-2)}
+  .pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;
+    padding:2px 9px;border-radius:999px}
+  .flagbtn{border:1px solid var(--border);background:var(--surface);cursor:pointer;border-radius:8px;
+    font-size:12px;font-weight:600;padding:4px 9px;color:var(--ink)}
+  .flagbtn:hover{background:var(--bad-bg);color:var(--bad);border-color:var(--bad)}
+  .flagged{color:var(--bad);font-weight:700}
+
+  /* city requests */
+  .req{border:1px solid var(--border);border-radius:11px;padding:11px 13px;margin-bottom:9px;
+    display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .req .tag{font-size:11px;font-weight:750;text-transform:uppercase;letter-spacing:.3px;
+    padding:2px 8px;border-radius:6px;background:var(--surface-2)}
+  .req .why{font-size:12px;color:var(--ink-2)}
+  .st{font-size:11px;font-weight:750;padding:2px 9px;border-radius:999px}
+  .st.pending{background:var(--warn-bg);color:var(--warn)}
+  .st.approved{background:var(--good-bg);color:var(--good)}
+  .st.rejected{background:var(--bad-bg);color:var(--bad)}
+  .mini{border:none;background:transparent;cursor:pointer;font-size:12.5px;font-weight:700;padding:3px 7px;border-radius:7px}
+  .mini.ok{color:var(--good)} .mini.ok:hover{background:var(--good-bg)}
+  .mini.no{color:var(--bad)}  .mini.no:hover{background:var(--bad-bg)}
+  .empty{font-size:12.5px;color:var(--muted);padding:6px 0}
+
+  /* login */
+  .login{position:fixed;inset:0;background:var(--plane);display:flex;align-items:center;justify-content:center;z-index:200;padding:20px}
+  .loginbox{background:var(--surface);border:1px solid var(--border);border-radius:20px;box-shadow:var(--shadow);
+    width:100%;max-width:360px;padding:30px 26px;display:flex;flex-direction:column;gap:13px}
+  .loginbox h2{margin:0;text-align:center;font-size:19px;font-weight:760}
+  .loginbox .sub{margin:0 0 4px;text-align:center;font-size:12px;color:var(--muted)}
+  .loginbox label{display:block;font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px}
+  .loginbox input{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);color:var(--ink);font:inherit}
+  .err{color:var(--bad);font-size:12.5px;text-align:center;display:none}
+
+  /* modal */
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:150;padding:20px}
+  .overlay.open{display:flex}
+  .modal{background:var(--surface);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);
+    width:100%;max-width:440px;padding:22px}
+  .modal h3{margin:0 0 4px;font-size:17px}
+  .modal p{margin:0 0 14px;font-size:12.5px;color:var(--muted)}
+  .modal label{display:block;font-size:11px;font-weight:700;color:var(--muted);margin:10px 0 4px;text-transform:uppercase;letter-spacing:.3px}
+  .modal select,.modal textarea{width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);color:var(--ink);font:inherit}
+  .modal textarea{min-height:70px;resize:vertical}
+  .macts{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+
+  /* toast */
+  #toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);opacity:0;
+    background:#111;color:#fff;font-size:13px;font-weight:600;padding:11px 18px;border-radius:11px;
+    z-index:300;transition:.25s;pointer-events:none;max-width:90vw}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  html[data-theme="dark"] #toast{background:#333}
+
+  @media(max-width:900px){
+    .kpis{grid-template-columns:repeat(2,1fr)}
+    .grid2{grid-template-columns:1fr}
+  }
+  @media(max-width:560px){
+    .wrap{padding:16px 13px 50px}
+    .kpis{grid-template-columns:1fr 1fr;gap:10px}
+    .kpi .val{font-size:22px}
+    header.top h1{font-size:17px}
+  }
+  @media print{
+    .btn,.badge-user,#themeBtn,.flagbtn,.mini{display:none!important}
+    body{background:#fff}
+    .card,.kpi{box-shadow:none;break-inside:avoid}
+  }
+</style>
+</head>
+<body>
+
+<!-- Login -->
+<div class="login" id="loginScreen">
+  <div class="loginbox">
+    <div class="logo" style="margin:0 auto">W</div>
+    <h2>CEO / VP Dashboard</h2>
+    <p class="sub">Leadership monitoring · WeVois Billing</p>
+    <div>
+      <label for="lgEmail">Email</label>
+      <input type="email" id="lgEmail" placeholder="vp@wevois.com" autocomplete="username">
+    </div>
+    <div>
+      <label for="lgPass">Password</label>
+      <input type="password" id="lgPass" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <div class="err" id="lgErr"></div>
+    <button class="btn primary" id="lgBtn" style="margin-top:4px">Sign in</button>
+    <p class="sub" style="margin-top:2px">For VP / CEO (leadership) accounts.</p>
+  </div>
+</div>
+
+<div class="wrap" id="app" style="display:none">
+  <header class="top">
+    <div class="logo">W</div>
+    <div>
+      <h1>Leadership Overview</h1>
+      <p id="subline">Company-wide billing health · debtor ageing · deductions</p>
+    </div>
+    <div class="spacer"></div>
+    <span class="badge-user" id="userBadge"></span>
+    <button class="btn" id="themeBtn" title="Toggle theme">◐</button>
+    <button class="btn" id="exportBtn">⬇ Export report</button>
+    <button class="btn" id="logoutBtn">Sign out</button>
+  </header>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="grid2">
+    <div class="card">
+      <h2>Debtor ageing — all sites</h2>
+      <p class="cap">Outstanding (unpaid) bills grouped by days since raised</p>
+      <div class="agebar" id="ageBar"></div>
+      <div id="ageRows"></div>
+    </div>
+    <div class="card">
+      <h2>Region-wise performance</h2>
+      <p class="cap">Outstanding amount &amp; collection rate by region</p>
+      <div id="regionBars"></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <h2>Overdue sites — action list</h2>
+    <p class="cap">Unpaid bills, most overdue first · raise a flag for Accounts &amp; Billing Managers to action</p>
+    <div style="overflow-x:auto">
+      <table id="overdueTable">
+        <thead><tr>
+          <th>Site</th><th>Region</th><th>Month</th>
+          <th class="num">Net due</th><th>Ageing</th><th class="num">Days</th><th>Stage</th><th></th>
+        </tr></thead>
+        <tbody id="overdueBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>City change requests</h2>
+    <p class="cap">Add / remove-city requests · approve to apply immediately</p>
+    <div id="reqList"></div>
+  </div>
+</div>
+
+<!-- Raise flag modal -->
+<div class="overlay" id="flagOverlay">
+  <div class="modal">
+    <h3>Raise a flag</h3>
+    <p id="flagCtx"></p>
+    <label for="flagNote">What's the issue?</label>
+    <textarea id="flagNote" placeholder="Describe the problem Accounts / Billing Managers must address…"></textarea>
+    <div class="macts">
+      <button class="btn" data-close>Cancel</button>
+      <button class="btn primary" id="flagSubmit">🚩 Raise flag</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const DAY = 86400000;
+const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const DEBT_BUCKETS = [
+  { key:'g0', min:0,  max:30,       range:'0–30 days',  cssv:'--g0', label:'Healthy',     mail:'Appreciation mail' },
+  { key:'g1', min:31, max:60,       range:'31–60 days', cssv:'--g1', label:'Alert',       mail:'Alert · clarification' },
+  { key:'g2', min:61, max:90,       range:'61–90 days', cssv:'--g2', label:'Ultra alert', mail:'Ultra-alert mail' },
+  { key:'g3', min:91, max:Infinity, range:'90+ days',   cssv:'--g3', label:'Critical',    mail:'Daily 8 AM · reason required' }
+];
+
+let currentUser = null, sites = [], bills = [], flags = [], flagMap = {}, requests = [];
+let flagTarget = null;
+
+/* ---- helpers ---- */
+const inr = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
+function short(v){ const a=Math.abs(v); if(a>=1e7) return '₹'+(v/1e7).toFixed(2)+' Cr'; if(a>=1e5) return '₹'+(v/1e5).toFixed(2)+' L'; return '₹'+inr.format(Math.round(v)); }
+function rupees(v){ return '₹'+inr.format(Math.round(v)); }
+function pct(v){ return (v*100).toFixed(0)+'%'; }
+function cssVar(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+function monthLabel(mk){ const [y,m]=mk.split('-'); return MONTH_NAMES[+m-1]+" '"+y.slice(2); }
+function netOf(b){ return (b.billed||0)-(b.penalty||0)-(b.gst||0)-(b.tds||0); }
+function daysOutstanding(b){ if(!b.submitted_at) return null; return Math.max(0,Math.floor((Date.now()-new Date(b.submitted_at).getTime())/DAY)); }
+function bucketOf(days){ return DEBT_BUCKETS.find(x=>days>=x.min&&days<=x.max)||DEBT_BUCKETS[3]; }
+function flagKey(sid,mk){ return sid+'|'+mk; }
+let toastT; function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),2800); }
+
+/* ---- auth ---- */
+async function doLogin(){
+  const email=document.getElementById('lgEmail').value.trim();
+  const pass=document.getElementById('lgPass').value;
+  const err=document.getElementById('lgErr');
+  err.style.display='none';
+  if(!email||!pass){ err.textContent='Enter email and password'; err.style.display='block'; return; }
+  const btn=document.getElementById('lgBtn'); btn.textContent='Signing in…'; btn.disabled=true;
+  try{
+    const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+    if(error){ err.textContent=error.message; err.style.display='block'; return; }
+    const prof = await getProfile(data.user.id);
+    if(!['leadership','admin'].includes(prof.role)){
+      err.textContent='This dashboard is for VP / CEO accounts only.';
+      err.style.display='block'; await sb.auth.signOut(); return;
+    }
+    currentUser = { ...prof, email };
+    document.getElementById('loginScreen').style.display='none';
+    document.getElementById('app').style.display='';
+    document.getElementById('userBadge').textContent = (prof.full_name||'Leadership')+' · '+(prof.role==='admin'?'Admin':'VP / CEO');
+    await loadData(); renderAll();
+  }catch(e){ err.textContent='Login error: '+e.message; err.style.display='block'; }
+  finally{ btn.textContent='Sign in'; btn.disabled=false; }
+}
+async function getProfile(uid){
+  try{ const { data } = await sb.from('user_profiles').select('*').eq('id',uid).maybeSingle(); if(data) return data; }catch(e){}
+  return { full_name:'Leadership', role:'leadership' };
+}
+
+/* ---- data ---- */
+async function loadData(){
+  const [{ data: s }, { data: b }, { data: f }, { data: r }] = await Promise.all([
+    sb.from('sites').select('*').order('region').order('name'),
+    sb.from('bills').select('*'),
+    sb.from('bill_flags').select('*').eq('status','open'),
+    sb.from('city_requests').select('*').order('created_at',{ascending:false})
+  ]);
+  sites = s || []; bills = b || []; flags = f || []; requests = r || [];
+  flagMap = {}; flags.forEach(x=>{ flagMap[flagKey(x.site_id,x.month_key)] = x; });
+}
+const siteById = id => sites.find(s=>s.id===id);
+
+/* ---- render ---- */
+function renderAll(){ renderKpis(); renderAgeing(); renderRegions(); renderOverdue(); renderRequests(); }
+
+function unpaidBills(){ return bills.filter(b=>b.status && b.status!=='Paid'); }
+
+function renderKpis(){
+  const unpaid = unpaidBills();
+  let outstanding=0, stuck60=0, stuck90=0;
+  unpaid.forEach(b=>{ const n=netOf(b); outstanding+=n; const d=daysOutstanding(b);
+    if(d!=null&&d>60) stuck60+=n; if(d!=null&&d>90) stuck90+=n; });
+  let pen=0,gst=0,tds=0; bills.forEach(b=>{ pen+=b.penalty||0; gst+=b.gst||0; tds+=b.tds||0; });
+  const totalDed = pen+gst+tds;
+  const openFlags = flags.length;
+  const cards = [
+    { lab:'Total outstanding', val:short(outstanding), sub:unpaid.length+' unpaid bills', accent:'var(--penalty)' },
+    { lab:'Stuck 60+ days',    val:short(stuck60),     sub:'needs escalation',           accent:'var(--g2)' },
+    { lab:'Stuck 90+ days',    val:short(stuck90),     sub:'critical · daily mail',       accent:'var(--g3)' },
+    { lab:'Total deductions',  val:short(totalDed),    sub:`Pen ${short(pen)} · GST ${short(gst)} · TDS ${short(tds)}`, accent:'var(--billed)' }
+  ];
+  document.getElementById('kpis').innerHTML = cards.map(c=>`
+    <div class="kpi" style="--accent:${c.accent}">
+      <div class="lab">${c.lab}</div>
+      <div class="val">${c.val}</div>
+      <div class="sub">${c.sub}</div>
+    </div>`).join('');
+  document.getElementById('subline').textContent =
+    `${sites.length} sites · ${openFlags} open flag${openFlags===1?'':'s'} · ${requests.filter(r=>r.status==='pending').length} pending city request(s)`;
+}
+
+function renderAgeing(){
+  const unpaid = unpaidBills();
+  const agg = DEBT_BUCKETS.map(b=>({ b, count:0, amt:0 }));
+  unpaid.forEach(x=>{ const d=daysOutstanding(x); if(d==null) return; const bk=bucketOf(d);
+    const slot=agg.find(a=>a.b.key===bk.key); slot.count++; slot.amt+=netOf(x); });
+  const totAmt = agg.reduce((s,a)=>s+a.amt,0) || 1;
+  document.getElementById('ageBar').innerHTML = agg.map(a=>{
+    const w = (a.amt/totAmt)*100;
+    return w>0 ? `<span style="width:${w}%;background:${cssVar(a.b.cssv)}" title="${a.b.range}: ${short(a.amt)}">${w>9?a.b.range.replace(' days',''):''}</span>` : '';
+  }).join('') || '<span style="width:100%;background:var(--surface-2);color:var(--muted)">No outstanding bills</span>';
+  document.getElementById('ageRows').innerHTML = agg.map(a=>`
+    <div class="agerow">
+      <span class="dot" style="background:${cssVar(a.b.cssv)}"></span>
+      <div>
+        <div class="nm">${a.b.range} <span style="color:var(--muted);font-weight:500">· ${a.b.label}</span></div>
+        <div class="ml">✉ ${a.b.mail}</div>
+      </div>
+      <div class="rt"><b>${a.count}</b><small>${short(a.amt)}</small></div>
+    </div>`).join('');
+}
+
+function renderRegions(){
+  const regions = {};
+  bills.forEach(b=>{ const s=siteById(b.site_id); if(!s) return; const r=s.region||'—';
+    regions[r] = regions[r] || { billed:0, paid:0, outstanding:0 };
+    const n=netOf(b); regions[r].billed+=n;
+    if(b.status==='Paid') regions[r].paid+=n; else if(b.status) regions[r].outstanding+=n; });
+  const rows = Object.entries(regions).sort((a,b)=>b[1].outstanding-a[1].outstanding);
+  const maxOut = Math.max(1, ...rows.map(r=>r[1].outstanding));
+  document.getElementById('regionBars').innerHTML = rows.length ? rows.map(([name,d])=>{
+    const coll = d.billed ? d.paid/d.billed : 0;
+    return `<div class="rbar">
+      <div class="rhead"><b>${name}</b><span>${short(d.outstanding)} due · ${pct(coll)} collected</span></div>
+      <div class="track"><div class="fill" style="width:${(d.outstanding/maxOut)*100}%;background:${coll>0.7?'var(--g0)':coll>0.4?'var(--g1)':'var(--g3)'}"></div></div>
+    </div>`;
+  }).join('') : '<div class="empty">No data yet.</div>';
+}
+
+function renderOverdue(){
+  const rows = unpaidBills().map(b=>{ const s=siteById(b.site_id); const d=daysOutstanding(b);
+    return { b, s, d:d==null?-1:d, net:netOf(b) }; })
+    .filter(r=>r.s).sort((a,bb)=>bb.d-a.d);
+  const body = document.getElementById('overdueBody');
+  if(!rows.length){ body.innerHTML='<tr><td colspan="8" class="empty">No outstanding bills 🎉</td></tr>'; return; }
+  body.innerHTML = rows.map(r=>{
+    const bk = r.d>=0 ? bucketOf(r.d) : null;
+    const fl = flagMap[flagKey(r.s.id, r.b.month_key)];
+    return `<tr>
+      <td>${fl?'🚩 ':''}<b>${r.s.name}</b></td>
+      <td style="color:var(--ink-2)">${r.s.region||'—'}</td>
+      <td>${monthLabel(r.b.month_key)}</td>
+      <td class="num" style="font-weight:650">${rupees(r.net)}</td>
+      <td>${bk?`<span class="pill" style="background:${cssVar(bk.cssv)}22;color:${cssVar(bk.cssv)}">${bk.range}</span>`:'—'}</td>
+      <td class="num">${r.d>=0?r.d+'d':'—'}</td>
+      <td style="color:var(--ink-2)">${r.b.status}</td>
+      <td>${fl?'<span class="flagged">flagged</span>':`<button class="flagbtn" data-flag="${r.s.id}|${r.b.month_key}">🚩 Flag</button>`}</td>
+    </tr>`;
+  }).join('');
+  body.querySelectorAll('[data-flag]').forEach(btn=>btn.addEventListener('click',()=>{
+    const [sid,mk]=btn.dataset.flag.split('|'); openFlag(+sid, mk);
+  }));
+}
+
+function renderRequests(){
+  const el = document.getElementById('reqList');
+  if(!requests.length){ el.innerHTML='<div class="empty">No city change requests.</div>'; return; }
+  const canApprove = ['leadership','admin'].includes(currentUser.role);
+  el.innerHTML = requests.map(r=>{
+    const tag = r.kind==='add'?'Add city':'Remove city';
+    const acts = (canApprove && r.status==='pending')
+      ? `<button class="mini ok" data-ok="${r.id}">✓ Approve</button><button class="mini no" data-no="${r.id}">✕ Reject</button>`
+      : '';
+    return `<div class="req">
+      <span class="st ${r.status}">${r.status}</span>
+      <span class="tag">${tag}</span>
+      <b>${r.city_name||''}</b>${r.kind==='add'&&r.region?` <span style="color:var(--muted)">· ${r.region}</span>`:''}
+      <span class="why">${r.reason?'— '+r.reason:''}</span>
+      <span style="flex:1"></span>${acts}
+    </div>`;
+  }).join('');
+  el.querySelectorAll('[data-ok]').forEach(b=>b.addEventListener('click',()=>decideReq(+b.dataset.ok,true)));
+  el.querySelectorAll('[data-no]').forEach(b=>b.addEventListener('click',()=>decideReq(+b.dataset.no,false)));
+}
+
+/* ---- actions ---- */
+function openFlag(sid, mk){
+  flagTarget = { sid, mk };
+  const s = siteById(sid);
+  document.getElementById('flagCtx').textContent = `${s?.name||''} · ${monthLabel(mk)}`;
+  document.getElementById('flagNote').value = '';
+  document.getElementById('flagOverlay').classList.add('open');
+}
+async function submitFlag(){
+  if(!flagTarget) return;
+  const note = document.getElementById('flagNote').value.trim();
+  if(!note){ toast('Describe the issue first'); return; }
+  const uid = (await sb.auth.getUser()).data.user?.id;
+  const { data, error } = await sb.from('bill_flags')
+    .insert({ site_id:flagTarget.sid, month_key:flagTarget.mk, note, raised_by:uid })
+    .select().single();
+  if(error){ toast('Flag failed: '+error.message); return; }
+  flags.push(data); flagMap[flagKey(flagTarget.sid,flagTarget.mk)] = data;
+  document.getElementById('flagOverlay').classList.remove('open');
+  toast('🚩 Flag raised');
+  renderKpis(); renderOverdue();
+}
+async function decideReq(id, ok){
+  const req = requests.find(r=>r.id===id); if(!req) return;
+  if(ok){
+    if(req.kind==='add'){
+      const { error } = await sb.from('sites').insert({ name:req.city_name, region:req.region });
+      if(error){ toast('Could not add city: '+error.message); return; }
+    } else {
+      const { error } = await sb.from('sites').delete().eq('id',req.target_site_id);
+      if(error){ toast('Delete blocked — city still has bills'); return; }
+    }
+  }
+  const uid = (await sb.auth.getUser()).data.user?.id;
+  const { error:uErr } = await sb.from('city_requests')
+    .update({ status: ok?'approved':'rejected', decided_by:uid, decided_at:new Date().toISOString() }).eq('id',id);
+  if(uErr){ toast('Update failed: '+uErr.message); return; }
+  toast(ok?'Request approved':'Request rejected');
+  await loadData(); renderAll();
+}
+
+function exportReport(){
+  // CSV of overdue sites + a print fallback
+  const rows = unpaidBills().map(b=>{ const s=siteById(b.site_id); const d=daysOutstanding(b);
+    return { name:s?.name||'', region:s?.region||'', month:b.month_key, net:netOf(b),
+      days:d==null?'':d, bucket:d==null?'':bucketOf(d).range, status:b.status,
+      penalty:b.penalty||0, gst:b.gst||0, tds:b.tds||0 }; })
+    .filter(r=>r.name).sort((a,b)=>(b.days||0)-(a.days||0));
+  const head = ['Site','Region','Month','Net due','Days outstanding','Ageing bucket','Stage','Penalty','GST','TDS'];
+  const csv = [head.join(',')].concat(rows.map(r=>
+    [r.name,r.region,r.month,r.net,r.days,r.bucket,r.status,r.penalty,r.gst,r.tds]
+      .map(v=>`"${String(v).replace(/"/g,'""')}"`).join(','))).join('\n');
+  const blob = new Blob([csv],{type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download='wevois-outstanding-'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click(); URL.revokeObjectURL(url);
+  toast('CSV downloaded · use Print for PDF');
+}
+
+/* ---- boot ---- */
+document.getElementById('lgBtn').addEventListener('click', doLogin);
+document.getElementById('lgPass').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
+document.getElementById('flagSubmit').addEventListener('click', submitFlag);
+document.getElementById('exportBtn').addEventListener('click', exportReport);
+document.getElementById('logoutBtn').addEventListener('click', async ()=>{ await sb.auth.signOut(); location.reload(); });
+document.getElementById('themeBtn').addEventListener('click', ()=>{
+  const el=document.documentElement; el.setAttribute('data-theme', el.getAttribute('data-theme')==='dark'?'light':'dark');
+  if(currentUser) renderAll();
+});
+document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click', ()=>document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('open'))));
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('open')); });
+
+// auto-resume session
+(async ()=>{
+  const { data:{ session } } = await sb.auth.getSession();
+  if(session){
+    const prof = await getProfile(session.user.id);
+    if(['leadership','admin'].includes(prof.role)){
+      currentUser = { ...prof, email:session.user.email };
+      document.getElementById('loginScreen').style.display='none';
+      document.getElementById('app').style.display='';
+      document.getElementById('userBadge').textContent = (prof.full_name||'Leadership')+' · '+(prof.role==='admin'?'Admin':'VP / CEO');
+      await loadData(); renderAll();
+    }
+  }
+})();
+</script>
+</body>
+</html>

@@ -472,30 +472,6 @@ function transformBill(b) {
 /* ---- Load data for assigned sites ---- */
 async function loadData() {
   const keys = MONTHS.map(m => m.key);
-
-  if (currentUser?.email) {
-    const prof = await getProfile(currentUser.id, currentUser.email);
-    if (prof && prof.id) {
-      currentUser = { ...currentUser, ...prof };
-    }
-  }
-
-  const isUnrestricted = currentUser?.role === 'admin' || currentUser?.role === 'leadership';
-
-  let userAssignedSiteIds = [];
-  if (!isUnrestricted && currentUser?.id) {
-    let { data: asg } = await sb.from('site_assignments').select('site_id').eq('user_id', currentUser.id);
-    if ((!asg || asg.length === 0) && currentUser.email) {
-      const { data: prof } = await sb.from('user_profiles').select('id').eq('email', currentUser.email).maybeSingle();
-      if (prof?.id) {
-        currentUser.id = prof.id;
-        const { data: asg2 } = await sb.from('site_assignments').select('site_id').eq('user_id', prof.id);
-        asg = asg2;
-      }
-    }
-    userAssignedSiteIds = (asg || []).map(a => a.site_id);
-  }
-
   const [{ data: sitesData, error: se }, { data: billsData, error: be }] = await Promise.all([
     sb.from('sites').select('*').order('region').order('name'),
     sb.from('bills').select('*').in('month_key', keys)
@@ -503,20 +479,7 @@ async function loadData() {
   if (se) { showErr('Failed to load sites: ' + se.message); return; }
   if (be) { showErr('Failed to load bills: ' + be.message); return; }
 
-  const allSites = (sitesData || []).map(s => ({
-    id: s.id,
-    name: s.name,
-    region: s.region,
-    workflow_steps: s.workflow_steps || null
-  }));
-
-  if (!isUnrestricted) {
-    const assignedSet = new Set(userAssignedSiteIds);
-    sites = allSites.filter(s => assignedSet.has(s.id));
-  } else {
-    sites = allSites;
-  }
-
+  sites = (sitesData || []);
   records = {};
   sites.forEach(s => {
     records[s.id] = {};
@@ -525,10 +488,6 @@ async function loadData() {
   (billsData || []).forEach(b => {
     if (records[b.site_id]) records[b.site_id][b.month_key] = transformBill(b);
   });
-
-  if (!isUnrestricted && sites.length === 0) {
-    toast('⚠️ No sites assigned to your account yet. Please contact Admin.');
-  }
 }
 
 function showErr(msg) { toast(msg); }
@@ -544,70 +503,26 @@ function hideLoginScreen() {
   document.getElementById('logoutBtn').style.display    = '';
 }
 
-async function getProfile(userId, email) {
-  try {
-    let q = sb.from('user_profiles').select('*');
-    if (userId && userId !== 'demo-id') q = q.eq('id', userId);
-    else if (email) q = q.eq('email', email);
-    const { data } = await q.maybeSingle();
-    if (data && data.role) return data;
-  } catch(e) {}
-
-  let role = 'site_manager';
-  if (email) {
-    const e = email.toLowerCase();
-    if (e.includes('admin')) role = 'admin';
-    else if (e.includes('billing')) role = 'billing_manager';
-    else if (e.includes('vp') || e.includes('ceo')) role = 'leadership';
-    else if (e.includes('accounts')) role = 'accounts';
-    else role = 'site_manager';
-  }
-  return { id: userId || 'demo-id', full_name: email ? email.split('@')[0].toUpperCase() : 'Client Relationship Manager (CRM)', role };
-}
-
-function quickLogin(email, pass) {
-  document.getElementById('loginEmail').value = email;
-  document.getElementById('loginPass').value = pass;
-  doLogin();
+async function getProfile(userId) {
+  const { data } = await sb.from('user_profiles').select('*').eq('id', userId).single();
+  return data;
 }
 
 async function doLogin() {
-  const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+  const email = document.getElementById('loginEmail').value.trim();
   const pass  = document.getElementById('loginPass').value;
   const errEl = document.getElementById('loginErr');
   errEl.style.display='none';
   if (!email||!pass) { errEl.textContent='Enter email and password'; errEl.style.display='block'; return; }
 
   const btn=document.getElementById('loginBtn');
-  if (btn.disabled) return;
   btn.textContent='Signing in…'; btn.disabled=true;
   try {
-    let authUser = null;
+    const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+    if (error) { errEl.textContent=error.message; errEl.style.display='block'; return; }
 
-    // 1. Try Supabase Auth signInWithPassword
-    const { data: signData, error: signErr } = await sb.auth.signInWithPassword({ email, password: pass });
-    if (!signErr && signData?.user) {
-      authUser = signData.user;
-    } else {
-      // 2. Try signUp if account is brand new
-      const { data: upData, error: upErr } = await sb.auth.signUp({ email, password: pass });
-      if (!upErr && upData?.user) {
-        authUser = upData.user;
-      } else {
-        // 3. Fail-safe demo session fallback
-        const prof = await getProfile(null, email);
-        if (prof || email.includes('wevois') || pass === 'admin123') {
-          authUser = { id: 'demo-id', email };
-        } else {
-          errEl.textContent = 'Sign-in failed: ' + (signErr?.message || upErr?.message || 'Invalid credentials');
-          errEl.style.display = 'block';
-          return;
-        }
-      }
-    }
-
-    const profile = await getProfile(authUser.id, email);
-    currentUser = { id: authUser.id, ...profile, email };
+    const profile = await getProfile(data.user.id);
+    currentUser = { ...profile, email: data.user.email };
     document.getElementById('loadingScreen').classList.add('active');
     hideLoginScreen();
     await loadData();
@@ -617,7 +532,7 @@ async function doLogin() {
     initMonthSel();
     renderAll();
     document.getElementById('whoText').innerHTML =
-      `Logged in as <b>${profile?.full_name || email}</b> · ${currentUser?.role || 'user'}`;
+      `Logged in as <b>${profile?.full_name || email}</b> · ${profile?.role || 'user'}`;
   } catch(e) {
     errEl.textContent='Login error: '+e.message;
     errEl.style.display='block';
@@ -823,54 +738,6 @@ function renderStats() {
     <div class="stat"><div class="l">Avg cycle</div><div class="v">${avg!=null?avg+' days':'—'}</div></div>`;
 }
 
-const DEFAULT_WORKFLOW_STEPS = [
-  'Not started Yet',
-  'Bill Submmited',
-  'LDC',
-  'SI',
-  'CSI',
-  'JEn',
-  'Aen',
-  'Ex.En',
-  'Accounts',
-  'CMC',
-  'PMC/ADM/SDM',
-  'Cash',
-  'Bill Cleared'
-];
-function getSiteSteps(site) {
-  if (typeof site === 'number' || typeof site === 'string') {
-    site = sites.find(s => s.id === +site);
-  }
-  if (site && Array.isArray(site.workflow_steps) && site.workflow_steps.length > 0) {
-    return site.workflow_steps;
-  }
-  return DEFAULT_WORKFLOW_STEPS;
-}
-
-function statusBadge(status, siteId) {
-  if (!status || status === 'Not started Yet' || status === 'Not Started') {
-    return `<span class="badge b-None"><span class="dot" style="background:var(--muted)"></span>Not started Yet</span>`;
-  }
-  if (status === 'On Hold') {
-    return `<span class="badge b-Hold"><span class="dot" style="background:var(--stage-hold)"></span>⚠️ On Hold</span>`;
-  }
-  const steps = getSiteSteps(siteId || state.site);
-  let idx = steps.indexOf(status);
-  if (idx === -1) {
-    if (status === 'Submitted') idx = steps.indexOf('Bill Submmited') !== -1 ? steps.indexOf('Bill Submmited') : 1;
-    else if (status === 'Verified') idx = steps.indexOf('JEn') !== -1 ? steps.indexOf('JEn') : 5;
-    else if (status === 'Approved') idx = steps.indexOf('Accounts') !== -1 ? steps.indexOf('Accounts') : 8;
-    else if (status === 'Paid') idx = steps.length - 1;
-    else return `<span class="badge" style="background:var(--surface-2);border:1px solid var(--border);color:var(--brand);font-weight:600">${status}</span>`;
-  }
-  const isCleared = (idx === steps.length - 1) || status === 'Bill Cleared' || status === 'Paid';
-  if (isCleared) {
-    return `<span class="badge b-Paid"><span class="dot" style="background:var(--stage-4)"></span>✓ ${status}</span>`;
-  }
-  return `<span class="badge" style="background:var(--surface-2);border:1px solid var(--border);color:var(--brand);font-weight:700" title="Step ${idx+1} of ${steps.length}"><span class="dot" style="background:var(--brand)"></span>${idx+1}/${steps.length} · ${status}</span>`;
-}
-
 function renderHistory() {
   document.getElementById('history').innerHTML=MONTHS.slice().reverse().map(m=>{
     const r=records[state.site]?.[m.key]||{reported:false};
@@ -880,7 +747,7 @@ function renderHistory() {
         <div class="n">${r.reported?short(r.net):'—'}</div>
         <div class="s">${r.reported?(r.penalty?'penalty −'+short(r.penalty):'no penalty'):'not entered'}</div>
       </div>
-      ${r.reported?statusBadge(r.status, state.site):''}
+      ${r.reported?statusBadge(r.status):''}
       ${ageChip(r)}
       <div class="chev">›</div>
     </div>`;
@@ -902,20 +769,15 @@ function syncNet() {
   document.getElementById('uNet').value=rupees(Math.max(0,b-p));
 }
 function syncMode() {
-  const paid = pickedStage === 'Paid' || pickedStage === 'Cash' || pickedStage === 'Bill Cleared';
-  document.getElementById('uMode').disabled = !paid;
-  const modeWrap = document.getElementById('uMode')?.closest('.field');
-  const noteWrap = document.getElementById('uNote')?.closest('.field');
-  if (modeWrap) modeWrap.style.display = paid ? '' : 'none';
-  if (noteWrap) noteWrap.style.display = paid ? '' : 'none';
-  const modeHint = document.getElementById('modeHint');
-  if (modeHint) modeHint.textContent = paid ? 'Cash-branch settlement mode for this payment.' : 'Visible when stage is Cash or Bill Cleared.';
+  const paid=pickedStage==='Paid';
+  document.getElementById('uMode').disabled=!paid;
+  document.getElementById('modeHint').textContent=paid?'Cash-branch settlement mode for this payment.':'Payment mode is enabled when the stage is Paid.';
 }
 function renderStagePick() {
-  const steps = getSiteSteps(state.site);
-  const opts = [...steps.filter(s => s !== 'Not started Yet'), 'On Hold'];
+  const opts=[...STAGES,'On Hold'];
+  const map={Submitted:'var(--stage-1)',Verified:'var(--stage-2)',Approved:'var(--stage-3)',Paid:'var(--stage-4)','On Hold':'var(--stage-hold)'};
   document.getElementById('stagePick').innerHTML=opts.map(o=>
-    `<button class="sp ${pickedStage===o?'sel':''}" data-st="${o}"><span class="dot" style="background:${o==='On Hold'?'var(--stage-hold)':'var(--brand)'}"></span>${o}</button>`
+    `<button class="sp ${pickedStage===o?'sel':''}" data-st="${o}"><span class="dot" style="background:${map[o]}"></span>${o}</button>`
   ).join('');
   document.querySelectorAll('.sp').forEach(b=>b.addEventListener('click',()=>{pickedStage=b.dataset.st;renderStagePick();syncMode();}));
 }
@@ -931,19 +793,9 @@ function openSheet() {
   pendingNoteFile=null;
   document.getElementById('uNote').value='';
   document.getElementById('notePreview').style.display='none';
-
-  const isBillingManager = currentUser?.role === 'billing_manager';
-  const penWrap = document.getElementById('uPenalty')?.closest('.field');
-  if (isBillingManager && penWrap) penWrap.style.display = 'none';
-  else if (penWrap) penWrap.style.display = '';
-
-  if (isBillingManager) {
-    const steps = getSiteSteps(state.site);
-    pickedStage = steps.includes('Bill Submmited') ? 'Bill Submmited' : (steps[1] || steps[0]);
-  } else if (!rec.reported) pickedStage='Submitted';
+  if (!rec.reported) pickedStage='Submitted';
   else if (rec.status==='On Hold') pickedStage='On Hold';
   else { const i=STAGES.indexOf(rec.status); pickedStage=i<STAGES.length-1?STAGES[i+1]:'Paid'; }
-
   if (rec.reported&&rec.mode) document.getElementById('uMode').value=rec.mode;
   const today=new Date();
   document.getElementById('uDate').value=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
@@ -958,23 +810,14 @@ function closeSheets() {
 
 async function saveSheet() {
   const billed  = +document.getElementById('uBilled').value  || 0;
-  const isBillingManager = currentUser?.role === 'billing_manager';
-  const prev  = curRec();
-  const penalty = isBillingManager ? (prev?.penalty || 0) : (+document.getElementById('uPenalty').value || 0);
+  const penalty = +document.getElementById('uPenalty').value || 0;
   if (billed<=0)      { toast('Enter a gross billed amount'); return; }
   if (penalty>billed) { toast("Penalty can't exceed billed amount"); return; }
 
   const dv    = document.getElementById('uDate').value;
   const stamp = dv ? new Date(dv+'T12:00:00').toISOString() : new Date().toISOString();
-  const STAGE_FIELDS = {
-    Submitted: 'submitted_at',
-    'Bill Submmited': 'submitted_at',
-    Verified: 'verified_at',
-    Approved: 'approved_at',
-    Paid: 'paid_at',
-    'Bill Cleared': 'paid_at',
-    Cash: 'paid_at'
-  };
+  const prev  = curRec();
+  const STAGE_FIELDS = { Submitted:'submitted_at', Verified:'verified_at', Approved:'approved_at', Paid:'paid_at' };
   const timestamps = {
     submitted_at: prev?.dates?.Submitted ? new Date(prev.dates.Submitted).toISOString() : null,
     verified_at:  prev?.dates?.Verified  ? new Date(prev.dates.Verified).toISOString()  : null,
@@ -982,14 +825,8 @@ async function saveSheet() {
     paid_at:      prev?.dates?.Paid      ? new Date(prev.dates.Paid).toISOString()      : null,
     hold_since:   null
   };
-  if (pickedStage === 'On Hold') {
-    timestamps.hold_since = stamp;
-  } else if (STAGE_FIELDS[pickedStage]) {
-    timestamps[STAGE_FIELDS[pickedStage]] = stamp;
-  } else {
-    if (!timestamps.submitted_at) timestamps.submitted_at = stamp;
-  }
-  delete timestamps['undefined'];
+  if (pickedStage==='On Hold') timestamps.hold_since = stamp;
+  else timestamps[STAGE_FIELDS[pickedStage]] = stamp;
 
   const saveBtn = document.getElementById('saveBtn');
   saveBtn.textContent='Saving…'; saveBtn.disabled=true;

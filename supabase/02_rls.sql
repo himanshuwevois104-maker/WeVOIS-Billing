@@ -72,6 +72,14 @@ CREATE POLICY "bills_all_access" ON bills
   FOR ALL USING (true) WITH CHECK (true);
 
 
+-- ── notifications ─────────────────────────────────────────────────────────────
+ALTER TABLE notifications DISABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "notifications_all_access" ON notifications;
+
+CREATE POLICY "notifications_all_access" ON notifications
+  FOR ALL USING (true) WITH CHECK (true);
+
+
 -- ── Storage (notesheets bucket) ───────────────────────────────────────────────
 DROP POLICY IF EXISTS "notesheet_upload" ON storage.objects;
 DROP POLICY IF EXISTS "notesheet_read" ON storage.objects;

@@ -291,19 +291,8 @@
       <label for="loginPass">Password</label>
       <input type="password" id="loginPass" placeholder="Enter password" autocomplete="current-password">
     </div>
-    <button type="button" class="login-btn" id="loginBtn">Sign in →</button>
-    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);text-align:center">
-      <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">Quick Demo Logins</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-        <button type="button" class="btn" onclick="quickLogin('admin@wevois.com','admin123')" style="font-size:12px;padding:6px 8px">👑 Admin</button>
-        <button type="button" class="btn" onclick="quickLogin('billing@wevois.com','admin123')" style="font-size:12px;padding:6px 8px">💼 Billing Mgr</button>
-        <button type="button" class="btn" onclick="quickLogin('site@wevois.com','admin123')" style="font-size:12px;padding:6px 8px">🏗️ Site Mgr</button>
-        <button type="button" class="btn" onclick="quickLogin('vp@wevois.com','admin123')" style="font-size:12px;padding:6px 8px">👔 VP / CEO</button>
-      </div>
-      <div style="margin-top:10px">
-        <a href="#" onclick="localStorage.clear();sessionStorage.clear();location.reload(true);" style="font-size:11.5px;color:var(--muted);text-decoration:underline">🔄 Stuck? Clear Cache &amp; Refresh</a>
-      </div>
-    </div>
+    <button class="login-btn" id="loginBtn" onclick="doLogin()">Sign in →</button>
+    <p class="login-hint">Demo: admin@wevois.com / admin123</p>
   </div>
 </div>
 
@@ -327,18 +316,6 @@
     <div class="user-badge" id="userBadge" style="display:none">
       <span>👤</span><strong id="userBadgeName"></strong>
     </div>
-    <div style="position:relative;margin-right:6px">
-      <button class="btn" id="notifBell" title="Notifications" style="position:relative">
-        🔔 <span id="notifBadge" style="display:none;position:absolute;top:-4px;right:-4px;background:var(--penalty);color:#fff;font-size:10px;font-weight:800;border-radius:999px;padding:2px 5px;min-width:16px;text-align:center">0</span>
-      </button>
-      <div id="notifPopover" style="display:none;position:absolute;right:0;top:40px;width:340px;background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);z-index:250;padding:12px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)">
-          <strong style="font-size:13px">🔔 Live System Notifications</strong>
-          <button id="markReadBtn" class="btn" style="font-size:11px;padding:2px 6px;color:var(--brand)">Mark all read</button>
-        </div>
-        <div id="notifList" style="max-height:280px;overflow-y:auto;display:flex;flex-direction:column;gap:8px"></div>
-      </div>
-    </div>
     <button class="btn" id="cityReqBtn" style="display:none">🏙 Request city change</button>
     <button class="btn" id="adminBtn" style="display:none">⚙ Manage users</button>
     <button class="btn primary" id="addBtn">＋ Add / Update Bill</button>
@@ -355,10 +332,6 @@
     <div class="field">
       <label for="regionSel">Region</label>
       <select id="regionSel"><option value="all">All regions</option></select>
-    </div>
-    <div class="field">
-      <label for="siteSel">Site</label>
-      <select id="siteSel"><option value="all">All sites</option></select>
     </div>
     <div class="field">
       <label for="statusSel">Stage / status</label>
@@ -393,9 +366,60 @@
     </div>
     <div class="card">
       <h2>Approval stage — <span id="funnelMonth"></span></h2>
-      <p class="cap">Where each site's bill sits in the workflow</p>
+      <p class="cap">Where each site's bill sits in the workflow · full ground process mapped below</p>
       <div class="funnel" id="funnel"></div>
       <div class="aging-note ok" id="agingNote"></div>
+    </div>
+  </div>
+
+  <!-- Lifecycle flow map -->
+  <div class="grid g-1">
+    <div class="card">
+      <h2>Bill lifecycle — ground process</h2>
+      <p class="cap">The full department workflow behind the four tracked stages · digitised from the process notesheet</p>
+      <div class="flow">
+        <div class="phase" data-s="1">
+          <div class="phase-head"><span class="pdot" style="background:var(--stage-1)"></span>Submission <small>· tracked as "Submitted"</small></div>
+          <div class="step"><span class="who">Accounts</span>Monthly bill prepared<small>by the 30th of the month</small></div>
+          <div class="sarr">↓</div>
+          <div class="step"><span class="who">Ravi</span>Cover letter<small>30th of the month</small></div>
+          <div class="sarr">↓</div>
+          <div class="step"><span class="who">Accounts</span>Submitted to CTO<small>next working day · receiving captured on WhatsApp</small></div>
+        </div>
+        <div class="phase" data-s="2">
+          <div class="phase-head"><span class="pdot" style="background:var(--stage-2)"></span>Verification <small>· tracked as "Verified"</small></div>
+          <div class="step"><span class="who">Dept.</span>Received in department</div>
+          <div class="sarr">↓</div>
+          <div class="step"><span class="who">LDC</span>Bill put on file</div>
+          <div class="sarr">↓</div>
+          <div class="step"><span class="who">SI</span>Verification of the bill</div>
+          <div class="sarr">↓</div>
+          <div class="step"><span class="who">OIC</span>SBM Head verifies</div>
+          <div class="sarr">↓</div>
+          <div class="step"><span class="who">Dept.</span>Penalties assessed<small>deductions applied to the bill</small></div>
+        </div>
+        <div class="phase" data-s="3">
+          <div class="phase-head"><span class="pdot" style="background:var(--stage-3)"></span>Approval <small>· tracked as "Approved"</small></div>
+          <div class="step"><span class="who">Accounts</span>Pre-check<small>before EO approval</small></div>
+          <div class="sarr">↓</div>
+          <div class="step"><span class="who">EO</span>Approval</div>
+          <div class="sarr">↓</div>
+          <div class="step"><span class="who">Accounts</span>Payment advice letter ready</div>
+          <div class="sarr">↓</div>
+          <div class="step"><span class="who">CMC / EO</span>Final approval<small>advice copies A1 · A2 · A3</small></div>
+        </div>
+        <div class="phase" data-s="4">
+          <div class="phase-head"><span class="pdot" style="background:var(--stage-4)"></span>Payment <small>· tracked as "Paid"</small></div>
+          <div class="step"><span class="who">Cash branch</span>Payment released<small>settlement mode:</small>
+            <div class="modes-inline">
+              <span class="mode-pill">Treasury</span><span class="mode-pill">Self</span>
+              <span class="mode-pill">PFMS</span><span class="mode-pill">Cheque</span>
+            </div>
+          </div>
+          <div class="sarr">↓</div>
+          <div class="step"><span class="who">WeVois</span>Payment received ✓</div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -411,17 +435,6 @@
       <p class="cap">How paid bills were settled by the cash branch</p>
       <div class="funnel" id="modeBars"></div>
     </div>
-  </div>
-
-  <!-- Billing Managers Hierarchy & Site Mapping (Leadership / Admin view) -->
-  <div class="card" id="bmCard" style="display:none;margin-bottom:16px">
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-      <div>
-        <h2 style="font-size:15px;margin:0 0 3px">Billing Managers &amp; Assigned Sites</h2>
-        <p class="cap" style="margin:0">Overview of Billing Managers, their assigned municipal sites, gross billed, deductions, and site analytics.</p>
-      </div>
-    </div>
-    <div id="bmCards" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));gap:14px;margin-top:14px"></div>
   </div>
 
   <!-- Table -->
@@ -469,7 +482,6 @@
         <p id="drillSub"></p>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
-        <button class="btn primary" id="drillUpdateBtn" style="display:none;font-size:12px;padding:6px 12px" onclick="openFormForSite(drillSiteId)">✏️ Update status</button>
         <button class="btn" id="flagBtn" style="display:none" onclick="raiseFlag()">🚩 Raise flag</button>
         <button class="close" data-close>×</button>
       </div>
@@ -493,7 +505,6 @@
       <div>
         <h3>Add / update a bill</h3>
         <p>Enter monthly figures &amp; attach the signed notesheet.</p>
-        <div id="roleFormHint" style="display:none;margin-top:6px;font-size:12px;font-weight:600;color:var(--brand);background:var(--surface-2);padding:6px 10px;border-radius:6px;border:1px dashed var(--brand)"></div>
       </div>
       <button class="close" data-close>×</button>
     </div>
@@ -535,29 +546,22 @@
         <input type="date" id="fDate">
       </div>
       <div>
-        <label for="fNet">Net payable (auto)</label>
-        <input type="text" id="fNet" readonly>
-      </div>
-      <div id="modeWrap">
         <label for="fMode">Payment mode</label>
         <select id="fMode">
           <option>Treasury</option><option>Self</option>
           <option>PFMS</option><option>Cheque</option>
         </select>
-        <p class="hint" id="fModeHint">Visible when stage is Cash or Bill Cleared.</p>
+        <p class="hint" id="fModeHint">Enabled when stage is Paid.</p>
       </div>
-      <div class="full" id="remarkWrap">
-        <label for="fRemark">Remark (optional)</label>
-        <input type="text" id="fRemark" placeholder="e.g. Sent to Accounts department / Approved by Executive Engineer">
+      <div>
+        <label for="fNet">Net payable (auto)</label>
+        <input type="text" id="fNet" readonly>
       </div>
-      <div class="full" id="noteWrap">
-        <label for="fNote">Signed notesheet photo / Bill Document (PDF or Image)</label>
-        <input type="file" id="fNote" accept="image/*,application/pdf,.pdf">
-        <p class="hint">Upload a PDF or image of the monthly bill / signed notesheet (optional at Bill Cleared stage).</p>
-        <div class="note-preview" id="notePreview" style="display:none;margin-top:8px">
-          <img id="notePreviewImg" alt="preview" style="max-width:100%;max-height:180px;display:none;border-radius:8px">
-          <div id="notePreviewPdf" style="display:none;padding:10px;background:var(--surface-2);border:1px dashed var(--brand);border-radius:8px;font-weight:600;font-size:13px;color:var(--brand)">📄 <span id="notePdfName">Monthly Bill PDF selected</span></div>
-        </div>
+      <div class="full">
+        <label for="fNote">Signed notesheet / letter (image)</label>
+        <input type="file" id="fNote" accept="image/*">
+        <p class="hint">Attach a photo of the final signed notesheet.</p>
+        <div class="note-preview" id="notePreview"><img id="notePreviewImg" alt="notesheet preview"></div>
       </div>
     </div>
     <div class="form-actions">
@@ -581,7 +585,7 @@
       <div><label for="auPass">Temp password</label><input type="text" id="auPass" placeholder="min 6 characters"></div>
       <div><label for="auRole">Role</label><select id="auRole"></select></div>
       <div class="full" id="auSitesWrap">
-        <label>Assign sites <span class="hint" style="font-weight:500;text-transform:none;letter-spacing:0">— for Billing Managers &amp; CRMs</span></label>
+        <label>Assign sites <span class="hint" style="font-weight:500;text-transform:none;letter-spacing:0">— for Billing / Site Managers</span></label>
         <div id="auSites" style="display:grid;grid-template-columns:repeat(2,1fr);gap:1px 18px;max-height:200px;overflow:auto;border:1px solid var(--border);border-radius:9px;padding:9px 11px;background:var(--surface-2)"></div>
       </div>
     </div>
@@ -636,50 +640,15 @@
   </div>
 </div>
 
-<!-- Workflow Customizer Modal (Per Site) -->
-<div class="overlay" id="wfOverlay">
-  <div class="modal" style="max-width:560px">
-    <div class="modal-head">
-      <div>
-        <h3 id="wfModalTitle">Customize Billing Flow</h3>
-        <p class="sub" id="wfModalSub">Add, remove, or reorder steps specifically for this site.</p>
-      </div>
-      <button class="close" data-close>×</button>
-    </div>
-
-    <div style="margin:12px 0 16px">
-      <label style="font-weight:600;font-size:13px;display:block;margin-bottom:6px">Workflow Steps (in order)</label>
-      <div id="wfStepList" style="display:flex;flex-direction:column;gap:6px;max-height:280px;overflow-y:auto;border:1px solid var(--border);border-radius:10px;padding:10px;background:var(--surface-2)"></div>
-    </div>
-
-    <div style="display:flex;gap:8px;margin-bottom:18px">
-      <input type="text" id="newWfStepInput" placeholder="Add custom step (e.g. NOC Clearance)" style="flex:1">
-      <button class="btn" id="addWfStepBtn" type="button" style="flex:none">+ Add step</button>
-    </div>
-
-    <div class="form-actions" style="display:flex;justify-content:space-between;align-items:center">
-      <button class="btn" id="resetWfBtn" type="button" style="color:var(--muted)">🔄 Reset to default (13 steps)</button>
-      <div style="display:flex;gap:8px">
-        <button class="btn" data-close type="button">Cancel</button>
-        <button class="btn primary" id="saveWfBtn" type="button">Save for this site</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Notesheet / Monthly Bill Viewer -->
+<!-- Notesheet viewer -->
 <div class="overlay" id="noteOverlay">
-  <div class="modal wide" style="max-width:820px">
+  <div class="modal">
     <div class="modal-head">
-      <div><h3 id="noteTitle">Monthly Bill Document</h3><p id="noteSub"></p></div>
+      <div><h3 id="noteTitle">Signed notesheet</h3><p id="noteSub"></p></div>
       <button class="close" data-close>×</button>
     </div>
-    <div id="noteViewerContent" style="text-align:center;margin-top:12px">
-      <img id="noteImg" style="max-width:100%;border-radius:10px;border:1px solid var(--border);display:none" alt="bill document">
-      <iframe id="notePdfFrame" style="width:100%;height:520px;border:1px solid var(--border);border-radius:10px;display:none"></iframe>
-      <div id="notePdfLinkWrap" style="margin-top:12px;display:none">
-        <a id="notePdfLink" href="#" target="_blank" class="btn primary" style="display:inline-flex;align-items:center;gap:6px">📄 Open Full PDF in New Tab ↗</a>
-      </div>
+    <div style="text-align:center;margin-top:12px">
+      <img id="noteImg" style="max-width:100%;border-radius:10px;border:1px solid var(--border)" alt="notesheet">
     </div>
   </div>
 </div>
@@ -707,31 +676,6 @@ function buildMonths() {
   return arr;
 }
 const MONTHS = buildMonths();
-const DEFAULT_WORKFLOW_STEPS = [
-  'Not started Yet',
-  'Bill Submmited',
-  'LDC',
-  'SI',
-  'CSI',
-  'JEn',
-  'Aen',
-  'Ex.En',
-  'Accounts',
-  'CMC',
-  'PMC/ADM/SDM',
-  'Cash',
-  'Bill Cleared'
-];
-function getSiteSteps(site) {
-  if (typeof site === 'number' || typeof site === 'string') {
-    site = sites.find(s => s.id === +site);
-  }
-  if (site && Array.isArray(site.workflow_steps) && site.workflow_steps.length > 0) {
-    return site.workflow_steps;
-  }
-  return DEFAULT_WORKFLOW_STEPS;
-}
-
 const STAGES = ['Submitted','Verified','Approved','Paid'];
 const MODES  = ['Treasury','Self','PFMS','Cheque'];
 const DAY = 86400000, HOUR = 3600000;
@@ -745,16 +689,14 @@ let records     = {};
 let flags       = [];
 let flagMap     = {};
 let drillSiteId = null;
-const WRITER_ROLES     = ['billing_manager','site_manager','accounts','admin']; // may create / edit bills
+const WRITER_ROLES     = ['accounts','admin'];            // may create / edit bills
 const LEADERSHIP_ROLES = ['leadership','admin'];          // VP & CEO — may raise flags
-const WORKFLOW_ROLES   = ['billing_manager','site_manager','admin'];
-const canWrite          = () => WRITER_ROLES.includes(currentUser?.role);
-const canFlag           = () => LEADERSHIP_ROLES.includes(currentUser?.role);
-const canManageWorkflow = () => WORKFLOW_ROLES.includes(currentUser?.role);
+const canWrite = () => WRITER_ROLES.includes(currentUser?.role);
+const canFlag  = () => LEADERSHIP_ROLES.includes(currentUser?.role);
 const flagKey  = (sid, mk) => sid + '|' + mk;
 const ROLE_META = [
   ['accounts','Accounts team'], ['billing_manager','Billing Manager'],
-  ['site_manager','Client Relationship Manager (CRM)'], ['leadership','CEO / VP (Leadership)'], ['admin','Admin']
+  ['site_manager','Site Manager'], ['leadership','VP / CEO'], ['admin','Admin']
 ];
 let editingSitesFor = null;
 
@@ -785,103 +727,27 @@ function transformBill(b) {
 /* ---- Load all data from Supabase ---- */
 async function loadData() {
   const keys = MONTHS.map(m => m.key);
-
-  if (currentUser?.email) {
-    const prof = await getProfile(currentUser.id, currentUser.email);
-    if (prof && prof.id) {
-      currentUser = { ...currentUser, ...prof };
-    }
-  }
-
-  const userRole = (currentUser?.role || '').toLowerCase();
-  const emailLower = (currentUser?.email || '').toLowerCase();
-  const isUnrestricted = userRole === 'admin' || userRole === 'leadership' || userRole === 'vp' || userRole === 'ceo' || emailLower.includes('vp') || emailLower.includes('ceo') || emailLower.includes('admin');
-
-  let userAssignedSiteIds = [];
-  if (!isUnrestricted && currentUser?.id) {
-    let { data: asg } = await sb.from('site_assignments').select('site_id').eq('user_id', currentUser.id);
-    if ((!asg || asg.length === 0) && currentUser.email) {
-      const { data: prof } = await sb.from('user_profiles').select('id').eq('email', currentUser.email).maybeSingle();
-      if (prof?.id) {
-        currentUser.id = prof.id;
-        const { data: asg2 } = await sb.from('site_assignments').select('site_id').eq('user_id', prof.id);
-        asg = asg2;
-      }
-    }
-    userAssignedSiteIds = (asg || []).map(a => a.site_id);
-  }
-
-  const [{ data: sitesData, error: se }, { data: billsData, error: be }, { data: flagsData }, { data: profsData }, { data: asgData }] = await Promise.all([
+  const [{ data: sitesData, error: se }, { data: billsData, error: be }, { data: flagsData }] = await Promise.all([
     sb.from('sites').select('*').order('region').order('name'),
     sb.from('bills').select('*').in('month_key', keys),
-    sb.from('bill_flags').select('*').eq('status', 'open'),
-    sb.from('user_profiles').select('*'),
-    sb.from('site_assignments').select('*')
+    sb.from('bill_flags').select('*').eq('status', 'open')
   ]);
-  const FALLBACK_SITES = [
-    { id: 1, name: 'Jaipur – Malviya Nagar', region: 'Rajasthan', workflow_steps: null },
-    { id: 2, name: 'Jaipur – Vaishali Nagar', region: 'Rajasthan', workflow_steps: null },
-    { id: 3, name: 'Jodhpur – Zone 1', region: 'Rajasthan', workflow_steps: null },
-    { id: 4, name: 'Jodhpur – Zone 2', region: 'Rajasthan', workflow_steps: null },
-    { id: 12, name: 'Pali', region: 'Rajasthan', workflow_steps: null },
-    { id: 14, name: 'Jhunjhunu', region: 'Rajasthan', workflow_steps: null },
-    { id: 16, name: 'Tonk', region: 'Rajasthan', workflow_steps: null },
-    { id: 17, name: 'Nagaur', region: 'Rajasthan', workflow_steps: null },
-    { id: 20, name: 'Dungarpur', region: 'Rajasthan', workflow_steps: null }
-  ];
+  if (se) { toast('Failed to load sites: ' + se.message); return; }
+  if (be) { toast('Failed to load bills: ' + be.message); return; }
 
-  profiles = (profsData && profsData.length) ? profsData : [
-    { id: '93b68ca1-7320-4617-a731-6709fc600420', full_name: 'Anand Tyagi', email: 'anandtyagiwevois@gmail.com', role: 'billing_manager' },
-    { id: '02746f16-be4e-4c31-9936-9a1770d0f13d', full_name: 'Kanchan Kumar', email: 'kanchan@123', role: 'site_manager' },
-    { id: '0a03a555-9f13-4d6a-bfe1-848cd760039c', full_name: 'Himanshu Yadav', email: 'yadav.himanshu34@gmail.com', role: 'site_manager' },
-    { id: 'c264e99e-0b7a-4fa7-9f63-4ea566e43314', full_name: 'VP / CEO Leadership', email: 'vp@wevois.com', role: 'leadership' }
-  ];
-  siteAssignments = (asgData && asgData.length) ? asgData : [
-    { user_id: '93b68ca1-7320-4617-a731-6709fc600420', site_id: 1 },
-    { user_id: '93b68ca1-7320-4617-a731-6709fc600420', site_id: 2 },
-    { user_id: '93b68ca1-7320-4617-a731-6709fc600420', site_id: 4 },
-    { user_id: '93b68ca1-7320-4617-a731-6709fc600420', site_id: 12 },
-    { user_id: '93b68ca1-7320-4617-a731-6709fc600420', site_id: 14 },
-    { user_id: '93b68ca1-7320-4617-a731-6709fc600420', site_id: 16 },
-    { user_id: '93b68ca1-7320-4617-a731-6709fc600420', site_id: 20 },
-    { user_id: '02746f16-be4e-4c31-9936-9a1770d0f13d', site_id: 1 },
-    { user_id: '02746f16-be4e-4c31-9936-9a1770d0f13d', site_id: 2 },
-    { user_id: '02746f16-be4e-4c31-9936-9a1770d0f13d', site_id: 16 },
-    { user_id: '02746f16-be4e-4c31-9936-9a1770d0f13d', site_id: 17 },
-    { user_id: '02746f16-be4e-4c31-9936-9a1770d0f13d', site_id: 20 }
-  ];
-
-  const rawSites = (sitesData && sitesData.length) ? sitesData : FALLBACK_SITES;
-  const allSites = rawSites.map(s => ({
-    id: s.id,
-    name: s.name,
-    region: s.region,
-    workflow_steps: s.workflow_steps || null,
-    base: 0
-  }));
-
-  if (!isUnrestricted) {
-    const assignedSet = new Set(userAssignedSiteIds);
-    sites = allSites.filter(s => assignedSet.has(s.id));
-  } else {
-    sites = allSites;
-  }
-
+  sites   = (sitesData || []).map(s => ({ id: s.id, name: s.name, region: s.region, base: 0 }));
   records = {};
   sites.forEach(s => {
     records[s.id] = {};
     MONTHS.forEach(m => { records[s.id][m.key] = { reported: false }; });
   });
   (billsData || []).forEach(b => {
-    if (records[b.site_id]) records[b.site_id][b.month_key] = transformBill(b);
+    if (!records[b.site_id]) records[b.site_id] = {};
+    records[b.site_id][b.month_key] = transformBill(b);
   });
   flags   = flagsData || [];
   flagMap = {};
   flags.forEach(f => { flagMap[flagKey(f.site_id, f.month_key)] = f; });
-
-  if (!isUnrestricted && sites.length === 0) {
-    toast('⚠️ No sites assigned to your account yet. Please contact Admin.');
-  }
 }
 
 /* ---- Auth UI ---- */
@@ -897,85 +763,37 @@ function hideLoginScreen() {
   document.getElementById('logoutBtn').style.display  = '';
 }
 
-async function getProfile(userId, email) {
+async function getProfile(userId) {
   try {
-    let data = null;
-    if (email) {
-      const { data: d1 } = await sb.from('user_profiles').select('*').eq('email', email).maybeSingle();
-      data = d1;
-    }
-    if (!data && userId && userId !== 'demo-id') {
-      const { data: d2 } = await sb.from('user_profiles').select('*').eq('id', userId).maybeSingle();
-      data = d2;
-    }
-    if (data && data.role) return data;
+    const { data } = await sb.from('user_profiles').select('*').eq('id', userId).maybeSingle();
+    if (data) return data;
   } catch(e) {}
-
-  let role = 'site_manager';
-  if (email) {
-    const e = email.toLowerCase();
-    if (e.includes('admin')) role = 'admin';
-    else if (e.includes('billing')) role = 'billing_manager';
-    else if (e.includes('vp') || e.includes('ceo') || e.includes('leadership')) role = 'leadership';
-    else if (e.includes('accounts')) role = 'accounts';
-    else role = 'site_manager';
-  }
-  return { id: userId || 'demo-id', full_name: email ? email.split('@')[0].toUpperCase() : 'Client Relationship Manager (CRM)', role };
-}
-
-function quickLogin(email, pass) {
-  document.getElementById('loginEmail').value = email;
-  document.getElementById('loginPass').value = pass;
-  doLogin();
+  return { full_name: 'Admin Manager', role: 'admin' };
 }
 
 async function doLogin() {
-  const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+  const email = document.getElementById('loginEmail').value.trim();
   const pass  = document.getElementById('loginPass').value;
   const errEl = document.getElementById('loginErr');
   errEl.style.display = 'none';
   if (!email || !pass) { errEl.textContent = 'Enter email and password'; errEl.style.display = 'block'; return; }
 
   const btn = document.getElementById('loginBtn');
-  if (btn.disabled) return;
   btn.textContent = 'Signing in…'; btn.disabled = true;
-
   try {
-    let authUser = null;
-    try { await sb.auth.signOut(); } catch(e){}
+    const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+    if (error) { errEl.textContent = error.message; errEl.style.display = 'block'; return; }
 
-    // 1. Try Supabase Auth signInWithPassword
-    const { data: signData, error: signErr } = await sb.auth.signInWithPassword({ email, password: pass });
-    if (!signErr && signData?.user) {
-      authUser = signData.user;
-    } else {
-      // 2. Try signUp if account is brand new
-      const { data: upData, error: upErr } = await sb.auth.signUp({ email, password: pass });
-      if (!upErr && upData?.user) {
-        authUser = upData.user;
-      } else {
-        // 3. Fail-safe demo session fallback
-        const prof = await getProfile(null, email);
-        if (prof || email.includes('wevois') || pass === 'admin123') {
-          authUser = { id: 'demo-id', email };
-        } else {
-          errEl.textContent = 'Sign-in failed: ' + (signErr?.message || upErr?.message || 'Invalid credentials');
-          errEl.style.display = 'block';
-          return;
-        }
-      }
-    }
-
-    const profile = await getProfile(authUser.id, email);
-    currentUser = { id: authUser.id, ...profile, email };
-    document.getElementById('userBadgeName').textContent = `${profile?.full_name || email} (${currentUser?.role || 'user'})`;
+    const profile = await getProfile(data.user.id);
+    currentUser = { ...profile, email: data.user.email };
+    document.getElementById('userBadgeName').textContent = `${profile?.full_name || email} (${profile?.role || 'user'})`;
     document.getElementById('loadingOverlay').classList.add('active');
     hideLoginScreen();
     await loadData();
     document.getElementById('loadingOverlay').classList.remove('active');
-    fillFormSelectors(); renderAll();
+    initControls(); fillFormSelectors(); renderAll();
   } catch(e) {
-    errEl.textContent = 'Login error: ' + (e.message || e);
+    errEl.textContent = 'Login error: ' + e.message;
     errEl.style.display = 'block';
   } finally {
     btn.textContent = 'Sign in →'; btn.disabled = false;
@@ -989,80 +807,21 @@ async function initApp() {
   document.getElementById('loadingOverlay').classList.add('active');
   try {
     const profile = await getProfile(session.user.id);
-    currentUser   = { id: session.user.id, ...profile, email: session.user.email };
-    document.getElementById('userBadgeName').textContent = `${profile?.full_name || session.user.email} (${currentUser?.role || 'user'})`;
+    currentUser   = { ...profile, email: session.user.email };
+    document.getElementById('userBadgeName').textContent = `${profile?.full_name || session.user.email} (${profile?.role || 'user'})`;
     await loadData();
-    await loadNotifications();
     document.getElementById('loadingOverlay').classList.remove('active');
     hideLoginScreen();
-    fillFormSelectors(); renderAll();
+    initControls(); fillFormSelectors(); renderAll();
   } catch(e) {
     document.getElementById('loadingOverlay').classList.remove('active');
     showLoginScreen();
   }
 }
 
-let notifications = [];
-
-async function loadNotifications() {
-  try {
-    const { data } = await sb.from('notifications').select('*').order('created_at', { ascending: false }).limit(20);
-    notifications = data || [];
-    renderNotifications();
-  } catch(e) {}
-}
-
-function renderNotifications() {
-  const badge = document.getElementById('notifBadge');
-  const list = document.getElementById('notifList');
-  if (!badge || !list) return;
-
-  const unread = notifications.filter(n => !n.read).length;
-  if (unread > 0) {
-    badge.textContent = unread;
-    badge.style.display = 'inline-block';
-  } else {
-    badge.style.display = 'none';
-  }
-
-  if (!notifications.length) {
-    list.innerHTML = `<div style="font-size:12px;color:var(--muted);text-align:center;padding:12px">No system notifications.</div>`;
-    return;
-  }
-
-  list.innerHTML = notifications.map(n => `
-    <div style="padding:8px 10px;background:${n.read ? 'transparent' : 'var(--surface-2)'};border-radius:8px;border-left:3px solid var(--brand);font-size:12px">
-      <div style="font-weight:750;margin-bottom:2px">${n.title}</div>
-      <div style="color:var(--ink-2);line-height:1.35">${n.message}</div>
-      <div style="font-size:10px;color:var(--muted);margin-top:4px">${new Date(n.created_at).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' })}</div>
-    </div>
-  `).join('');
-}
-
-async function addNotification(title, message, type, recipientRole = 'all', siteId = null) {
-  try {
-    const { data } = await sb.from('notifications').insert({
-      title, message, type, recipient_role: recipientRole, site_id: siteId
-    }).select().single();
-    if (data) {
-      notifications.unshift(data);
-      renderNotifications();
-    }
-  } catch(e) {}
-}
-
 /* ============================================================
-   Formatting & DOM helpers
+   Formatting helpers
    ============================================================ */
-function setText(id, txt) {
-  const el = typeof id === 'string' ? document.getElementById(id) : id;
-  if (el) el.textContent = txt;
-}
-function setHtml(id, html) {
-  const el = typeof id === 'string' ? document.getElementById(id) : id;
-  if (el) el.innerHTML = html;
-}
-
 const inr = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
 function rupees(v) { return '₹' + inr.format(Math.round(v)); }
 function short(v) {
@@ -1140,236 +899,104 @@ function ageingCell(rec) {
 /* ============================================================
    State
    ============================================================ */
-const state = { month: MONTHS[MONTHS.length-1].key, region:'all', siteId:'all', status:'all', search:'', sort:'name', dir:1 };
+const state = { month: MONTHS[MONTHS.length-1].key, region: 'all', status: 'all', search: '', sort: 'net', dir: -1 };
 
-function monthTotals(mKey, region, siteId) {
-  let sub=0, pen=0, gst=0, tds=0, paid=0, totalCount=0, reportedCount=0, stuck=0;
+function monthTotals(monthKey, region) {
+  let billed=0, penalty=0, net=0, paidNet=0, reported=0, total=0, stuck=0;
   const stageCount = { Submitted:0, Verified:0, Approved:0, Paid:0, 'On Hold':0 };
   const stageAmt   = { Submitted:0, Verified:0, Approved:0, Paid:0, 'On Hold':0 };
-  const modeCount  = { Treasury:0, Self:0, PFMS:0, Cheque:0 };
   const modeAmt    = { Treasury:0, Self:0, PFMS:0, Cheque:0 };
-
+  const modeCount  = { Treasury:0, Self:0, PFMS:0, Cheque:0 };
   sites.forEach(s => {
-    if (region && region !== 'all' && s.region !== region) return;
-    if (siteId && siteId !== 'all' && s.id !== +siteId) return;
-    totalCount++;
-    const r = records[s.id]?.[mKey];
-    if (r && r.reported) {
-      reportedCount++;
-      sub += r.billed; pen += r.penalty; gst += r.gst; tds += r.tds;
-      if (r.status === 'Paid') paid += r.net;
-      if (r.status && stageCount[r.status] != null) {
-        stageCount[r.status]++; stageAmt[r.status] += r.net;
-      }
-      if (r.status === 'Paid' && r.mode && modeCount[r.mode] != null) {
-        modeCount[r.mode]++; modeAmt[r.mode] += r.net;
-      }
-      const age = ageDays(r);
-      if (r.status !== 'Paid' && age != null && age > 7) stuck++;
+    if (region !== 'all' && s.region !== region) return;
+    total++;
+    const rec = records[s.id]?.[monthKey];
+    if (!rec || !rec.reported) return;
+    reported++; billed += rec.billed; penalty += rec.penalty; net += rec.net;
+    stageCount[rec.status]++; stageAmt[rec.status] += rec.net;
+    if (rec.status === 'Paid') {
+      paidNet += rec.net;
+      if (rec.mode) { modeAmt[rec.mode] += rec.net; modeCount[rec.mode]++; }
+    } else {
+      const a = ageDays(rec); if (a != null && a > 7) stuck++;
     }
   });
-  return { sub, pen, gst, tds, net: sub - pen - gst - tds, paid, totalCount, reportedCount, stageCount, stageAmt, modeCount, modeAmt, stuck };
+  return { billed, penalty, net, paidNet, reported, total, stuck, stageCount, stageAmt, modeAmt, modeCount };
 }
 
 /* ============================================================
-   Renderers
+   KPI render
    ============================================================ */
-function applyRole() {
-  const role = currentUser?.role || 'accounts';
-  const addBtn  = document.getElementById('addBtn');
-  const flagBtn = document.getElementById('flagBtn');
-  if (addBtn)  addBtn.style.display  = canWrite() ? '' : 'none';
-  if (flagBtn) flagBtn.style.display = canFlag()  ? '' : 'none';
-  const adminBtn = document.getElementById('adminBtn');
-  if (adminBtn) adminBtn.style.display = role === 'admin' ? '' : 'none';
-  const cityReqBtn = document.getElementById('cityReqBtn');
-  if (cityReqBtn) cityReqBtn.style.display = role === 'leadership' ? '' : 'none';
-  const ROLE_LABEL = {
-    accounts:'Accounts team · bill entry', billing_manager:'Billing Manager', site_manager:'Site Manager',
-    leadership:'VP / CEO · monitoring', admin:'Admin', executive:'Executive'
-  };
-  const sub = document.querySelector('.brand p');
-  if (sub) {
-    const of = flags.length;
-    sub.textContent = (ROLE_LABEL[role] || role)
-      + ' · ' + sites.length + ' site' + (sites.length===1?'':'s') + ' visible'
-      + (of ? ' · 🚩 ' + of + ' open flag' + (of===1?'':'s') : '');
-  }
+function prevMonthKey(mk) { const i = MONTHS.findIndex(m => m.key === mk); return i > 0 ? MONTHS[i-1].key : null; }
+function deltaHtml(cur, prev, goodUp=true) {
+  if (prev === 0 || prev == null) return `<div class="delta flat">— no prior</div>`;
+  const d = (cur-prev)/Math.abs(prev);
+  if (Math.abs(d) < 0.0005) return `<div class="delta flat">0.0% vs prev</div>`;
+  const up = d > 0; const good = (up === goodUp);
+  return `<div class="delta ${good?'up':'down'}">${up?'▲':'▼'} ${Math.abs(d*100).toFixed(1)}% vs prev</div>`;
 }
-function renderBillingManagers() {
-  const container = document.getElementById('bmCards');
-  const bmCard = document.getElementById('bmCard');
-  const r = (currentUser?.role || '').toLowerCase();
-  const isLeadership = r === 'leadership' || r === 'admin' || r === 'vp' || r === 'ceo';
-  
-  if (bmCard) bmCard.style.display = isLeadership ? 'block' : 'none';
-  if (!container || !isLeadership) return;
-
-  const bmProfiles = profiles.filter(p => p.role === 'billing_manager');
-  
-  if (!bmProfiles.length) {
-    container.innerHTML = `<div style="font-size:12.5px;color:var(--muted);padding:8px">No Billing Managers registered in system yet. All municipal sites listed in table below.</div>`;
-    return;
-  }
-
-  container.innerHTML = bmProfiles.map(bm => {
-    const assignedSiteIds = siteAssignments.filter(a => a.user_id === bm.id).map(a => a.site_id);
-    const bmSites = sites.filter(s => assignedSiteIds.includes(s.id));
-    
-    let gross = 0, net = 0, pen = 0, gst = 0, tds = 0, reported = 0;
-    bmSites.forEach(s => {
-      MONTHS.forEach(m => {
-        const rec = records[s.id]?.[m.key];
-        if (rec && rec.reported) {
-          reported++;
-          gross += rec.billed || 0;
-          pen += rec.penalty || 0;
-          gst += rec.gst || 0;
-          tds += rec.tds || 0;
-          net += rec.net || 0;
-        }
-      });
-    });
-
-    return `
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;box-shadow:var(--shadow)">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-          <div>
-            <h3 style="margin:0;font-size:15px;font-weight:750">👤 ${bm.full_name || bm.email.split('@')[0]}</h3>
-            <p style="margin:2px 0 0;font-size:12px;color:var(--muted)">${bm.email} · <span style="color:var(--brand);font-weight:600">${bmSites.length} Assigned Site${bmSites.length===1?'':'s'}</span></p>
-          </div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;padding:10px;background:var(--surface-2);border-radius:10px;font-size:12px">
-          <div><span style="color:var(--muted)">Gross Billed:</span> <br><strong style="font-size:14px;color:var(--billed)">${short(gross)}</strong></div>
-          <div><span style="color:var(--muted)">Net Payable:</span> <br><strong style="font-size:14px;color:var(--net)">${short(net)}</strong></div>
-          <div><span style="color:var(--muted)">Deductions:</span> <br><strong style="font-size:12px;color:var(--penalty)">${short(pen + gst + tds)}</strong></div>
-          <div><span style="color:var(--muted)">Filed Bills:</span> <br><strong style="font-size:12px">${reported} records</strong></div>
-        </div>
-        <h4 style="margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.3px;color:var(--muted)">Assigned Municipal Sites (Click to view charts):</h4>
-        <div style="display:flex;flex-direction:column;gap:6px">
-          ${bmSites.length ? bmSites.map(s => {
-            const rec = records[s.id]?.[state.month];
-            const curStatus = rec && rec.reported ? rec.status : 'Not started Yet';
-            return `
-              <div onclick="openDrill(${s.id})" style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:.15s" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background='var(--surface)'">
-                <div>
-                  <strong style="font-size:13px;color:var(--brand)">📍 ${s.name}</strong>
-                  <div style="font-size:11px;color:var(--muted)">${s.region || ''} · Status: ${curStatus}</div>
-                </div>
-                <span style="font-size:12px;font-weight:700;color:var(--ink-2)">📊 View Analytics ›</span>
-              </div>
-            `;
-          }).join('') : '<div style="font-size:12px;color:var(--muted)">No sites assigned to this manager yet.</div>'}
-        </div>
-      </div>
-    `;
-  }).join('');
-}
-
-function renderAll() { applyRole(); renderKpis(); renderCharts(); renderFunnel(); renderModes(); renderBillingManagers(); renderTable(); }
-
-/* ============================================================
-   KPI cards
-   ============================================================ */
 function renderKpis() {
-  const cur  = monthTotals(state.month, state.region, state.siteId);
-  const prevIdx = MONTHS.findIndex(m => m.key === state.month) - 1;
-  const prev = prevIdx >= 0 ? monthTotals(MONTHS[prevIdx].key, state.region, state.siteId) : null;
-
-  const dSub  = prev && prev.sub  ? (cur.sub  - prev.sub)  / prev.sub  : null;
-  const dPen  = prev && prev.pen  ? (cur.pen  - prev.pen)  / prev.pen  : null;
-  const dNet  = prev && prev.net  ? (cur.net  - prev.net)  / prev.net  : null;
-  const dPaid = prev && prev.paid ? (cur.paid - prev.paid) / prev.paid : null;
-
-  setText('kGross', short(cur.sub));
-  setText('kPen',   short(cur.pen));
-  setText('kNet',   short(cur.net));
-  setText('kPaid',  short(cur.paid));
-
-  setHtml('dGross', fmtDelta(dSub,  true));
-  setHtml('dPen',   fmtDelta(dPen,  false)); // lower penalty = good
-  setHtml('dNet',   fmtDelta(dNet,  true));
-  setHtml('dPaid',  fmtDelta(dPaid, true));
-
-  const repRate = cur.totalCount ? cur.reportedCount / cur.totalCount : 0;
-  setText('kRep', `${cur.reportedCount} / ${cur.totalCount}`);
-  setText('dRep', `(${pct(repRate)} sites filed)`);
-}
-function fmtDelta(d, flipGood) {
-  if (d == null) return '—';
-  const p = (Math.abs(d)*100).toFixed(1) + '%';
-  if (Math.abs(d) < 0.001) return `<span class="delta flat">0.0% MoM</span>`;
-  const up = d > 0;
-  const isGood = flipGood ? up : !up;
-  const cls = isGood ? 'good' : 'bad';
-  const sym = up ? '▲' : '▼';
-  return `<span class="delta ${cls}">${sym} ${p} MoM</span>`;
+  const t  = monthTotals(state.month, state.region);
+  const pk = prevMonthKey(state.month);
+  const p  = pk ? monthTotals(pk, state.region) : null;
+  const penRate = t.billed ? t.penalty/t.billed : 0;
+  const colRate = t.net    ? t.paidNet/t.net     : 0;
+  const tiles = [
+    { lab:'Gross billed',    val:short(t.billed),  sub:MONTHS.find(m=>m.key===state.month).label, accent:'var(--billed)', delta:deltaHtml(t.billed,p?.billed,true) },
+    { lab:'Penalties',       val:short(t.penalty), sub:pct(penRate)+' of gross',                  accent:'var(--penalty)',delta:deltaHtml(t.penalty,p?.penalty,false) },
+    { lab:'Net payable',     val:short(t.net),     sub:'after deductions',                         accent:'var(--net)',   delta:deltaHtml(t.net,p?.net,true) },
+    { lab:'Collected (Paid)',val:short(t.paidNet), sub:pct(colRate)+' of net cleared',             accent:'var(--good)', delta:deltaHtml(colRate,p?(p.net?p.paidNet/p.net:0):null,true) },
+    { lab:'Sites reported',  val:t.reported+' / '+t.total, sub:(t.total-t.reported)+' pending entry', accent:'var(--stage-2)',
+      delta:`<div class="delta ${t.reported===t.total?'up':'flat'}">${pct(t.total?t.reported/t.total:0)} in</div>` }
+  ];
+  document.getElementById('kpis').innerHTML = tiles.map(k =>
+    `<div class="kpi"><div class="accent" style="background:${k.accent}"></div>
+       <div class="lab">${k.lab}</div>
+       <div class="val">${k.val}</div>
+       <div class="sub">${k.sub}</div>
+       ${k.delta}
+     </div>`
+  ).join('');
 }
 
 /* ============================================================
-   Charts (SVG)
+   Line chart
    ============================================================ */
-function renderCharts() {
-  const mList = MONTHS;
-  const bList = mList.map(m => monthTotals(m.key, state.region, state.siteId));
-  const gross = bList.map(b => b.sub);
-  const net   = bList.map(b => b.net);
-  const pen   = bList.map(b => b.pen);
-
-  lineChart('trendChart', mList, [
-    { name:'Gross billed', color:'var(--billed)', values:gross, fill:true },
-    { name:'Net payable',  color:'var(--net)',    values:net }
-  ]);
-  barChart('penaltyChart', mList, pen, 'var(--penalty)');
+function seriesForRegion(region) {
+  const billed=[], net=[], penalty=[];
+  MONTHS.forEach(m => { const t = monthTotals(m.key, region); billed.push(t.billed); net.push(t.net); penalty.push(t.penalty); });
+  return { billed, net, penalty };
 }
-
-function niceMax(val) {
-  if (val <= 0) return 10;
-  const exp = Math.floor(Math.log10(val));
-  const frac = val / Math.pow(10, exp);
-  let niceFrac = 10;
-  if (frac <= 1.2) niceFrac = 1.2;
-  else if (frac <= 1.5) niceFrac = 1.5;
-  else if (frac <= 2.0) niceFrac = 2.0;
-  else if (frac <= 2.5) niceFrac = 2.5;
-  else if (frac <= 5.0) niceFrac = 5.0;
-  return niceFrac * Math.pow(10, exp);
+function niceMax(v) {
+  if (v <= 0) return 100000;
+  const pow = Math.pow(10, Math.floor(Math.log10(v)));
+  const n = v/pow;
+  const step = n<=1?1:n<=2?2:n<=5?5:10;
+  return step*pow;
 }
-
 function lineChart(elId, months, series) {
-  const W = 760, H = 250, pl = 64, pr = 16, pt = 14, pb = 32;
-  const iw = W - pl - pr, ih = H - pt - pb;
-  const allV = series.flatMap(s => s.values);
-  const maxV = niceMax(Math.max(...allV, 1) * 1.12);
-
-  const x = i => pl + (iw / (months.length - 1)) * i;
-  const y = v => pt + ih - (v / maxV) * ih;
-
-  const gl = 4; let g = '';
-  for (let i = 0; i <= gl; i++) {
-    const val = maxV * i / gl, yy = y(val);
+  const W=760,H=300,pl=64,pr=18,pt=16,pb=34;
+  const iw=W-pl-pr, ih=H-pt-pb;
+  const maxV = niceMax(Math.max(...series.flatMap(s=>s.values),1)*1.08);
+  const x = i => pl + (months.length===1 ? iw/2 : iw*i/(months.length-1));
+  const y = v => pt + ih - (v/maxV)*ih;
+  const gl=5; let g='';
+  for (let i=0;i<=gl;i++) {
+    const val=maxV*i/gl, yy=y(val);
     g += `<line class="gridline" x1="${pl}" y1="${yy}" x2="${W-pr}" y2="${yy}"/>`;
     g += `<text class="tick" x="${pl-8}" y="${yy+3}" text-anchor="end">${short(val).replace('₹','')}</text>`;
   }
-
-  let xl = '';
-  months.forEach((m, i) => { xl += `<text class="tick" x="${x(i)}" y="${H-12}" text-anchor="middle">${m.short}</text>`; });
-
-  let paths = '';
+  let xl='';
+  months.forEach((m,i) => { if (months.length>12&&i%2) return; xl += `<text class="tick" x="${x(i)}" y="${H-12}" text-anchor="middle">${m.short}</text>`; });
+  let paths='';
   series.forEach(s => {
-    const pts = s.values.map((v, i) => `${x(i)},${y(v)}`).join(' L ');
-    if (s.fill) {
-      const area = `M ${x(0)},${pt+ih} L ${pts} L ${x(months.length-1)},${pt+ih} Z`;
-      paths += `<path d="${area}" fill="${s.color}" fill-opacity="0.08"/>`;
-    }
-    paths += `<path d="M ${pts}" fill="none" stroke="${s.color}" stroke-width="2.5"/>`;
-    s.values.forEach((v, i) => {
-      paths += `<circle cx="${x(i)}" cy="${y(v)}" r="3.5" fill="${s.color}"/>`;
-    });
+    const dLine = s.values.map((v,i) => (i?'L':'M')+x(i)+' '+y(v)).join(' ');
+    if (s.fill) paths += `<path d="${dLine} L${x(months.length-1)} ${y(0)} L${x(0)} ${y(0)} Z" fill="${s.color}" opacity="0.08"/>`;
+    paths += `<path d="${dLine}" fill="none" stroke="${s.color}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`;
+    paths += s.values.map((v,i) => `<circle cx="${x(i)}" cy="${y(v)}" r="3.4" fill="var(--surface)" stroke="${s.color}" stroke-width="2"/>`).join('');
   });
-
-  let hits = '';
-  months.forEach((m, i) => {
+  let hits='';
+  months.forEach((m,i) => {
     const cx=x(i), bw=iw/months.length;
     hits += `<rect x="${cx-bw/2}" y="${pt}" width="${bw}" height="${ih}" fill="transparent" data-i="${i}" class="hitcol" style="cursor:crosshair"/>`;
   });
@@ -1426,29 +1053,26 @@ function barChart(elId, months, values, color) {
    Approval-stage funnel + aging note
    ============================================================ */
 function renderFunnel() {
-  const t = monthTotals(state.month, state.region, state.siteId);
-  const mObj = MONTHS.find(m=>m.key===state.month);
-  setText('funnelMonth', mObj ? mObj.label : state.month);
+  const t = monthTotals(state.month, state.region);
+  document.getElementById('funnelMonth').textContent = MONTHS.find(m=>m.key===state.month).label;
   const order = [['Submitted','var(--stage-1)'],['Verified','var(--stage-2)'],['Approved','var(--stage-3)'],['Paid','var(--stage-4)'],['On Hold','var(--stage-hold)']];
   const max = Math.max(1, ...order.map(o=>t.stageCount[o[0]]));
   const icons = { Submitted:'📝', Verified:'🔍', Approved:'✔️', Paid:'💰', 'On Hold':'⚠️' };
-  setHtml('funnel', order.map(([name,col]) => {
+  document.getElementById('funnel').innerHTML = order.map(([name,col]) => {
     const c=t.stageCount[name], amt=t.stageAmt[name];
     return `<div class="fn-row">
       <div class="fn-lab">${icons[name]} ${name}</div>
       <div class="fn-track"><div class="fn-bar" style="width:${(c/max*100).toFixed(1)}%;background:${col}"></div></div>
       <div class="fn-meta">${c} site${c===1?'':'s'} <small>· ${short(amt)}</small></div>
     </div>`;
-  }).join(''));
+  }).join('');
   const note = document.getElementById('agingNote');
-  if (note) {
-    if (t.stuck > 0) {
-      note.className='aging-note warn';
-      note.innerHTML=`⚠️&nbsp; <span>${t.stuck} unpaid bill${t.stuck===1?'':'s'} waiting <b>more than 7 days</b> at the current stage — see the "Days" column below.</span>`;
-    } else {
-      note.className='aging-note ok';
-      note.innerHTML=`✓&nbsp; <span>No unpaid bill has been stuck at a stage for more than 7 days.</span>`;
-    }
+  if (t.stuck > 0) {
+    note.className='aging-note warn';
+    note.innerHTML=`⚠️&nbsp; <span>${t.stuck} unpaid bill${t.stuck===1?'':'s'} waiting <b>more than 7 days</b> at the current stage — see the "Days" column below.</span>`;
+  } else {
+    note.className='aging-note ok';
+    note.innerHTML=`✓&nbsp; <span>No unpaid bill has been stuck at a stage for more than 7 days.</span>`;
   }
 }
 
@@ -1456,9 +1080,8 @@ function renderFunnel() {
    Payment-mode breakdown
    ============================================================ */
 function renderModes() {
-  const t = monthTotals(state.month, state.region, state.siteId);
-  const mObj = MONTHS.find(m=>m.key===state.month);
-  setText('modeMonth', mObj ? mObj.label : state.month);
+  const t = monthTotals(state.month, state.region);
+  document.getElementById('modeMonth').textContent = MONTHS.find(m=>m.key===state.month).label;
   const el = document.getElementById('modeBars');
   const totalPaid = MODES.reduce((s,m) => s+t.modeAmt[m], 0);
   if (totalPaid <= 0) { el.innerHTML = `<p class="cap" style="margin:6px 0">No bills marked Paid yet for this month.</p>`; return; }
@@ -1486,27 +1109,11 @@ function renderModes() {
 /* ============================================================
    Site table
    ============================================================ */
-function statusBadge(status, site) {
-  if (!status || status === 'Not started Yet' || status === 'Not Started') {
-    return `<span class="badge b-None"><span class="dot" style="background:var(--muted)"></span>Not started Yet</span>`;
-  }
-  if (status === 'On Hold') {
-    return `<span class="badge b-Hold"><span class="dot" style="background:var(--stage-hold)"></span>⚠️ On Hold</span>`;
-  }
-  const steps = getSiteSteps(site);
-  let idx = steps.indexOf(status);
-  if (idx === -1) {
-    if (status === 'Submitted') idx = steps.indexOf('Bill Submmited') !== -1 ? steps.indexOf('Bill Submmited') : 1;
-    else if (status === 'Verified') idx = steps.indexOf('JEn') !== -1 ? steps.indexOf('JEn') : 5;
-    else if (status === 'Approved') idx = steps.indexOf('Accounts') !== -1 ? steps.indexOf('Accounts') : 8;
-    else if (status === 'Paid') idx = steps.length - 1;
-    else return `<span class="badge" style="background:var(--surface-2);border:1px solid var(--border);color:var(--brand);font-weight:600">${status}</span>`;
-  }
-  const isCleared = (idx === steps.length - 1) || status === 'Bill Cleared' || status === 'Paid';
-  if (isCleared) {
-    return `<span class="badge b-Paid"><span class="dot" style="background:var(--stage-4)"></span>✓ ${status}</span>`;
-  }
-  return `<span class="badge" style="background:var(--surface-2);border:1px solid var(--border);color:var(--brand);font-weight:700" title="Step ${idx+1} of ${steps.length}"><span class="dot" style="background:var(--brand)"></span>${idx+1}/${steps.length} · ${status}</span>`;
+function statusBadge(status) {
+  if (!status) return `<span class="badge b-None"><span class="dot" style="background:var(--warn)"></span>Not reported</span>`;
+  const map = { Submitted:'var(--stage-1)', Verified:'var(--stage-2)', Approved:'var(--stage-3)', Paid:'var(--stage-4)', 'On Hold':'var(--stage-hold)' };
+  const cls = status==='On Hold' ? 'b-Hold' : ('b-'+status);
+  return `<span class="badge ${cls}"><span class="dot" style="background:${map[status]}"></span>${status}</span>`;
 }
 function renderAgeingStrip(rows) {
   const el = document.getElementById('ageingStrip');
@@ -1528,8 +1135,7 @@ function renderAgeingStrip(rows) {
 }
 function renderTable() {
   const mk = state.month;
-  const mObj = MONTHS.find(m=>m.key===mk);
-  setText('tblMonth', mObj ? mObj.label : mk);
+  document.getElementById('tblMonth').textContent = MONTHS.find(m=>m.key===mk).label;
   let rows = sites.map(s => {
     const rec = records[s.id]?.[mk] || { reported: false };
     return { id:s.id, name:s.name, region:s.region, rec,
@@ -1538,7 +1144,6 @@ function renderTable() {
       mode:rec.reported?rec.mode:null, age:ageSortVal(rec), debt:(debtorDays(rec)??-1), note:rec.reported?rec.note:null };
   });
   if (state.region!=='all') rows=rows.filter(r=>r.region===state.region);
-  if (state.siteId && state.siteId!=='all') rows=rows.filter(r=>r.id===+state.siteId);
   if (state.status!=='all') {
     if (state.status==='Not reported') rows=rows.filter(r=>r.status===null);
     else rows=rows.filter(r=>r.status===state.status);
@@ -1554,7 +1159,7 @@ function renderTable() {
     return (av-bv)*dir;
   });
   const reported = rows.filter(r=>r.status!==null).length;
-  setText('tblCount', `${rows.length} sites shown · ${reported} reported`);
+  document.getElementById('tblCount').textContent = `${rows.length} sites shown · ${reported} reported`;
   renderAgeingStrip(rows);
   document.getElementById('tblBody').innerHTML = rows.map(r => `
     <tr data-site="${r.id}"${(() => { const b=debtBucket(r.rec); return b?` style="box-shadow:inset 4px 0 0 ${b.color}"`:''; })()}>
@@ -1565,61 +1170,18 @@ function renderTable() {
       <td class="num" style="color:${r.gst?'var(--penalty)':'inherit'}">${r.gst!=null?(r.gst?'−'+rupees(r.gst):'₹0'):'—'}</td>
       <td class="num" style="color:${r.tds?'var(--penalty)':'inherit'}">${r.tds!=null?(r.tds?'−'+rupees(r.tds):'₹0'):'—'}</td>
       <td class="num" style="font-weight:650">${r.net!=null?rupees(r.net):'—'}</td>
-      <td title="${dateTitle(r.rec)}">
-        <span style="cursor:pointer;display:inline-flex;align-items:center" data-editstatus="${r.id}" title="Click to update status / stage for ${r.name}">${statusBadge(r.status, r.id)}</span>
-        ${canWrite() ? `<span class="note-chip" data-editstatus="${r.id}" style="margin-left:4px" title="Update status / stage for ${r.name}">✏️ Update</span>` : ''}
-        ${canManageWorkflow() ? `<span class="note-chip" data-editwf="${r.id}" style="margin-left:4px" title="Customize billing flow for ${r.name}">⚙️ Flow</span>` : ''}
-        ${(r.status==='Paid'||r.status==='Bill Cleared'||r.status==='Cash')&&r.mode?`<div class="site-region" style="margin-top:2px">via ${r.mode}</div>`:''}
-      </td>
+      <td title="${dateTitle(r.rec)}">${statusBadge(r.status)}${r.status==='Paid'&&r.mode?`<div class="site-region" style="margin-top:2px">via ${r.mode}</div>`:''}</td>
       <td>${ageingCell(r.rec)}</td>
       <td>${ageCell(r.rec)}</td>
-      <td>${r.note?`<span class="note-chip" data-note="${r.id}">${r.note.toLowerCase().endsWith('.pdf') ? '📄 PDF' : '📎 View'}</span>`:(r.status?'<span class="note-none">— none</span>':'<span class="note-none">—</span>')}</td>
+      <td>${r.note?`<span class="note-chip" data-note="${r.id}">📎 View</span>`:(r.status?'<span class="note-none">— none</span>':'<span class="note-none">—</span>')}</td>
     </tr>`
   ).join('');
   document.querySelectorAll('#tblBody tr').forEach(tr => {
     tr.addEventListener('click', e => {
-      if (e.target.closest('[data-editwf]')) {
-        e.stopPropagation();
-        openWorkflowEditor(+e.target.closest('[data-editwf]').dataset.editwf);
-        return;
-      }
-      if (e.target.closest('[data-editstatus]')) {
-        e.stopPropagation();
-        openFormForSite(+e.target.closest('[data-editstatus]').dataset.editstatus);
-        return;
-      }
-      if (e.target.closest('.badge')) {
-        e.stopPropagation();
-        openFormForSite(+tr.dataset.site);
-        return;
-      }
       if (e.target.closest('.note-chip')) { openNote(+e.target.closest('.note-chip').dataset.note); return; }
       openDrill(+tr.dataset.site);
     });
   });
-}
-
-function openFormForSite(siteId) {
-  openForm();
-  document.getElementById('fSite').value = siteId;
-  updateFormStatusOptions();
-  const mk = state.month;
-  document.getElementById('fMonth').value = mk;
-  const prev = records[siteId]?.[mk];
-  if (prev && prev.reported) {
-    document.getElementById('fBilled').value = prev.billed || '';
-    document.getElementById('fPenalty').value = prev.penalty || '';
-    document.getElementById('fGst').value = prev.gst || '';
-    document.getElementById('fTds').value = prev.tds || '';
-    document.getElementById('fStatus').value = prev.status || 'Bill Submmited';
-    if (document.getElementById('fRemark')) document.getElementById('fRemark').value = prev.remark || '';
-  } else {
-    ['fBilled','fPenalty','fGst','fTds','fRemark'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.value = '';
-    });
-  }
-  syncModeField();
 }
 
 /* ============================================================
@@ -1632,10 +1194,7 @@ async function openDrill(siteId) {
   document.getElementById('drillTitle').textContent = s.name;
   document.getElementById('drillSub').textContent   = s.region + ' · 12-month billing history'
     + (openFlag ? '  ·  🚩 FLAGGED: ' + openFlag.note : '');
-  const flagBtn = document.getElementById('flagBtn');
-  if (flagBtn) flagBtn.style.display = canFlag() ? '' : 'none';
-  const drillUpdBtn = document.getElementById('drillUpdateBtn');
-  if (drillUpdBtn) drillUpdBtn.style.display = canWrite() ? '' : 'none';
+  document.getElementById('flagBtn').style.display = canFlag() ? '' : 'none';
 
   const keys = MONTHS.map(m => m.key);
   const { data: billsData } = await sb.from('bills').select('*').eq('site_id', siteId).in('month_key', keys);
@@ -1667,10 +1226,10 @@ async function openDrill(siteId) {
         <td class="num" style="color:${r.reported&&r.gst?'var(--penalty)':'inherit'}">${r.reported?(r.gst?'−'+rupees(r.gst):'₹0'):'—'}</td>
         <td class="num" style="color:${r.reported&&r.tds?'var(--penalty)':'inherit'}">${r.reported?(r.tds?'−'+rupees(r.tds):'₹0'):'—'}</td>
         <td class="num">${r.reported?rupees(r.net):'—'}</td>
-        <td title="${dateTitle(r)}">${statusBadge(r.reported?r.status:null, siteId)}${r.reported&&r.status==='Paid'&&r.mode?`<div class="site-region" style="margin-top:2px">via ${r.mode}</div>`:''}</td>
+        <td title="${dateTitle(r)}">${statusBadge(r.reported?r.status:null)}${r.reported&&r.status==='Paid'&&r.mode?`<div class="site-region" style="margin-top:2px">via ${r.mode}</div>`:''}</td>
         <td>${ageingCell(r)}</td>
         <td>${ageCell(r)}</td>
-        <td>${r.reported&&r.note?`<span class="note-chip" data-note2="${siteId}" data-mk="${m.key}">${r.note.toLowerCase().endsWith('.pdf') ? '📄 PDF' : '📎 View'}</span>`:'<span class="note-none">—</span>'}</td></tr>`;
+        <td>${r.reported&&r.note?`<span class="note-chip" data-note2="${siteId}" data-mk="${m.key}">📎 View</span>`:'<span class="note-none">—</span>'}</td></tr>`;
     }).join('') + `</tbody>`;
   document.querySelectorAll('#drillTable .note-chip').forEach(c => {
     c.addEventListener('click', () => openNote(+c.dataset.note2, c.dataset.mk));
@@ -1701,55 +1260,22 @@ async function raiseFlag() {
 }
 
 /* ============================================================
-   Notesheet / Monthly Bill viewer
+   Notesheet viewer
    ============================================================ */
 async function openNote(siteId, mk) {
   mk = mk || state.month;
   const r = records[siteId]?.[mk];
   const s = sites.find(x => x.id === siteId);
-  if (!r || !r.note) { toast('No monthly bill attached for this record'); return; }
-  
-  document.getElementById('noteTitle').textContent = 'Monthly Bill Document — ' + (s?.name || '');
-  document.getElementById('noteSub').textContent   = (s?.region || '') + ' · ' + (MONTHS.find(m => m.key === mk)?.label || mk);
-  
-  const imgEl = document.getElementById('noteImg');
-  const pdfFrame = document.getElementById('notePdfFrame');
-  const pdfLinkWrap = document.getElementById('notePdfLinkWrap');
-  const pdfLink = document.getElementById('notePdfLink');
-  
-  imgEl.style.display = 'none';
-  pdfFrame.style.display = 'none';
-  pdfLinkWrap.style.display = 'none';
+  if (!r || !r.note) { toast('No notesheet attached for this bill'); return; }
+  document.getElementById('noteTitle').textContent = 'Signed notesheet — ' + (s?.name || '');
+  document.getElementById('noteSub').textContent   = MONTHS.find(m => m.key === mk)?.label || mk;
+  document.getElementById('noteImg').src = '';
+  document.getElementById('noteImg').alt = 'Loading…';
   openOverlay('noteOverlay');
-
-  let url = null;
-  let { data, error } = await sb.storage.from('notesheets').createSignedUrl(r.note, 3600);
-  if (error || !data?.signedUrl) {
-    try {
-      await sb.auth.signInWithPassword({ email: 'admin@wevois.com', password: 'admin123' });
-      const res = await sb.storage.from('notesheets').createSignedUrl(r.note, 3600);
-      data = res.data;
-      error = res.error;
-    } catch(e){}
-  }
-  if (data?.signedUrl) {
-    url = data.signedUrl;
-    if (!url.startsWith('http')) {
-      url = SUPABASE_URL + '/storage/v1' + (url.startsWith('/') ? '' : '/') + url;
-    }
-  }
-  if (!url) { toast('Could not load bill document: ' + (error?.message || 'File unavailable')); return; }
-  const isPdf = r.note.toLowerCase().endsWith('.pdf') || url.toLowerCase().includes('.pdf');
-
-  if (isPdf) {
-    pdfFrame.style.display = 'block';
-    pdfFrame.src = url;
-    pdfLink.href = url;
-    pdfLinkWrap.style.display = 'block';
-  } else {
-    imgEl.style.display = 'inline-block';
-    imgEl.src = url;
-  }
+  const { data, error } = await sb.storage.from('notesheets').createSignedUrl(r.note, 3600);
+  if (error || !data?.signedUrl) { toast('Could not load notesheet image'); return; }
+  document.getElementById('noteImg').src = data.signedUrl;
+  document.getElementById('noteImg').alt = 'Signed notesheet';
 }
 
 /* ============================================================
@@ -1769,65 +1295,14 @@ function hideTip() { tip.style.opacity=0; }
    ============================================================ */
 let pendingNoteFile = null;
 
-function updateFormStatusOptions() {
-  const sid = +document.getElementById('fSite').value;
-  const s = sites.find(x => x.id === sid);
-  const steps = getSiteSteps(s);
-  const curVal = document.getElementById('fStatus').value;
-  document.getElementById('fStatus').innerHTML =
-    steps.map(st => `<option value="${st}">${st}</option>`).join('') +
-    `<option value="On Hold">On Hold</option>`;
-  if (curVal && curVal !== 'Not started Yet' && curVal !== 'Not Started' && [...document.getElementById('fStatus').options].some(o => o.value === curVal)) {
-    document.getElementById('fStatus').value = curVal;
-  } else {
-    const subStep = steps.includes('Bill Submmited') ? 'Bill Submmited' : (steps[1] || steps[0] || 'Submitted');
-    document.getElementById('fStatus').value = subStep;
-  }
-}
-
 function syncModeField() {
-  const status = document.getElementById('fStatus').value;
-  const isCleared = ['Paid','Cash','Bill Cleared'].includes(status);
-  const modeWrap = document.getElementById('modeWrap') || document.getElementById('fMode')?.closest('div');
-  const noteWrap = document.getElementById('noteWrap') || document.getElementById('fNote')?.closest('.full');
-  if (modeWrap) modeWrap.style.display = isCleared ? '' : 'none';
-  if (noteWrap) noteWrap.style.display = isCleared ? '' : 'none';
-  document.getElementById('fMode').disabled = !isCleared;
+  const paid = document.getElementById('fStatus').value === 'Paid';
+  document.getElementById('fMode').disabled = !paid;
+  document.getElementById('fModeHint').textContent = paid ? 'Cash-branch settlement mode for this payment.' : 'Enabled when stage is Paid.';
 }
-
-function updateSiteDropdown() {
-  const siteSel = document.getElementById('siteSel');
-  if (!siteSel) return;
-  let filtered = sites;
-  if (state.region !== 'all') {
-    filtered = sites.filter(s => s.region === state.region);
-  }
-  siteSel.innerHTML = `<option value="all">All sites</option>` +
-    filtered.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
-
-  if (state.siteId !== 'all' && filtered.some(s => s.id === +state.siteId)) {
-    siteSel.value = state.siteId;
-  } else {
-    state.siteId = 'all';
-    siteSel.value = 'all';
-  }
-}
-
 function fillFormSelectors() {
   document.getElementById('fSite').innerHTML  = sites.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
   document.getElementById('fMonth').innerHTML = MONTHS.slice().reverse().map(m => `<option value="${m.key}">${m.label}</option>`).join('');
-  document.getElementById('fSite').addEventListener('change', updateFormStatusOptions);
-
-  const regions = [...new Set(sites.map(s => s.region))];
-  const regionSel = document.getElementById('regionSel');
-  if (regionSel) {
-    const curRegion = state.region;
-    regionSel.innerHTML = `<option value="all">All regions</option>` + regions.map(r => `<option value="${r}">${r}</option>`).join('');
-    regionSel.value = regions.includes(curRegion) ? curRegion : 'all';
-    state.region = regionSel.value;
-  }
-  updateSiteDropdown();
-
   const upd = () => {
     const b=+document.getElementById('fBilled').value||0, p=+document.getElementById('fPenalty').value||0,
           g=+document.getElementById('fGst').value||0, t=+document.getElementById('fTds').value||0;
@@ -1838,90 +1313,22 @@ function fillFormSelectors() {
   document.getElementById('fGst').addEventListener('input',upd);
   document.getElementById('fTds').addEventListener('input',upd);
   document.getElementById('fStatus').addEventListener('change',syncModeField);
-  
   document.getElementById('fNote').addEventListener('change', e => {
-    const f = e.target.files[0];
-    if (!f) return;
+    const f=e.target.files[0]; if (!f) return;
     pendingNoteFile = f;
-    const isPdf = f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf');
-    const pv = document.getElementById('notePreview');
-    const imgEl = document.getElementById('notePreviewImg');
-    const pdfEl = document.getElementById('notePreviewPdf');
-    pv.style.display = 'block';
-    if (isPdf) {
-      imgEl.style.display = 'none';
-      pdfEl.style.display = 'block';
-      document.getElementById('notePdfName').textContent = 'PDF: ' + f.name + ' (' + Math.round(f.size / 1024) + ' KB)';
-    } else {
-      pdfEl.style.display = 'none';
-      const rd = new FileReader();
-      rd.onload = () => { imgEl.style.display = 'block'; imgEl.src = rd.result; };
-      rd.readAsDataURL(f);
-    }
+    const rd=new FileReader();
+    rd.onload=()=>{ const pv=document.getElementById('notePreview'); pv.style.display='block'; document.getElementById('notePreviewImg').src=rd.result; };
+    rd.readAsDataURL(f);
   });
 }
-
 function openForm() {
   pendingNoteFile = null;
   document.getElementById('notePreview').style.display='none';
   document.getElementById('fNote').value='';
   document.getElementById('fMonth').value=state.month;
-  ['fBilled','fPenalty','fGst','fTds','fNet','fRemark'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = '';
-  });
+  ['fBilled','fPenalty','fGst','fTds','fNet'].forEach(id=>document.getElementById(id).value='');
   const today=new Date();
   document.getElementById('fDate').value = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
-
-  const sid = +document.getElementById('fSite').value;
-  const mk  = document.getElementById('fMonth').value;
-  const prev = records[sid]?.[mk];
-  if (prev && document.getElementById('fRemark')) {
-    document.getElementById('fRemark').value = prev.remark || '';
-  }
-
-  const isBillingManager = currentUser?.role === 'billing_manager';
-  const roleHint = document.getElementById('roleFormHint');
-
-  const penWrap  = document.getElementById('fPenalty')?.closest('div');
-  const gstWrap  = document.getElementById('fGst')?.closest('div');
-  const tdsWrap  = document.getElementById('fTds')?.closest('div');
-  const isSiteManager = currentUser?.role === 'site_manager';
-
-  if (isBillingManager) {
-    if (roleHint) {
-      roleHint.style.display = 'block';
-      roleHint.textContent = 'ℹ️ Billing Manager Mode: Enter Gross Bill Amount & upload Bill PDF. Stage is set to Bill Submmited.';
-    }
-    if (penWrap)  penWrap.style.display  = 'none';
-    if (gstWrap)  gstWrap.style.display  = 'none';
-    if (tdsWrap)  tdsWrap.style.display  = 'none';
-  } else if (isSiteManager) {
-    if (roleHint) {
-      roleHint.style.display = 'block';
-      roleHint.textContent = '🏗️ Client Relationship Manager (CRM) Mode: Select current stage / person holding the bill at present, enter deductions (Penalty, GST, TDS / other amounts), and save updates.';
-    }
-    if (penWrap)  penWrap.style.display  = '';
-    if (gstWrap)  gstWrap.style.display  = '';
-    if (tdsWrap)  tdsWrap.style.display  = '';
-  } else {
-    if (roleHint) roleHint.style.display = 'none';
-    if (penWrap)  penWrap.style.display  = '';
-    if (gstWrap)  gstWrap.style.display  = '';
-    if (tdsWrap)  tdsWrap.style.display  = '';
-  }
-
-  updateFormStatusOptions();
-
-  if (isBillingManager) {
-    const steps = getSiteSteps(sid);
-    const subStep = steps.includes('Bill Submmited') ? 'Bill Submmited' : (steps[1] || steps[0]);
-    document.getElementById('fStatus').value = subStep;
-    document.getElementById('fStatus').disabled = true;
-  } else {
-    document.getElementById('fStatus').disabled = false;
-  }
-
   syncModeField();
   openOverlay('formOverlay');
 }
@@ -1930,35 +1337,18 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
   const sid    = +document.getElementById('fSite').value;
   const mk     = document.getElementById('fMonth').value;
   const billed = +document.getElementById('fBilled').value  || 0;
-  const prev   = records[sid]?.[mk];
-
-  const isBillingManager = currentUser?.role === 'billing_manager';
-  const penalty = isBillingManager ? (prev?.penalty || 0) : (+document.getElementById('fPenalty').value || 0);
-  const gst     = isBillingManager ? (prev?.gst || 0)     : (+document.getElementById('fGst').value || 0);
-  const tds     = isBillingManager ? (prev?.tds || 0)     : (+document.getElementById('fTds').value || 0);
-  const remark  = document.getElementById('fRemark')?.value.trim() || null;
-
-  let status  = document.getElementById('fStatus').value;
-  if (!status || status === 'Not started Yet' || status === 'Not Started') {
-    const steps = getSiteSteps(sid);
-    status = steps.includes('Bill Submmited') ? 'Bill Submmited' : (steps[1] || steps[0] || 'Submitted');
-  }
-
+  const penalty= +document.getElementById('fPenalty').value || 0;
+  const gst    = +document.getElementById('fGst').value || 0;
+  const tds    = +document.getElementById('fTds').value || 0;
+  const status = document.getElementById('fStatus').value;
   if (billed<=0)      { toast('Enter a gross billed amount'); return; }
   if (penalty+gst+tds>billed) { toast("Deductions can't exceed billed amount"); return; }
 
   const dv    = document.getElementById('fDate').value;
   const stamp = dv ? new Date(dv+'T12:00:00').toISOString() : new Date().toISOString();
 
-  const STAGE_FIELDS = {
-    Submitted: 'submitted_at',
-    'Bill Submmited': 'submitted_at',
-    Verified: 'verified_at',
-    Approved: 'approved_at',
-    Paid: 'paid_at',
-    'Bill Cleared': 'paid_at',
-    Cash: 'paid_at'
-  };
+  const prev  = records[sid]?.[mk];
+  const STAGE_FIELDS = { Submitted:'submitted_at', Verified:'verified_at', Approved:'approved_at', Paid:'paid_at' };
   const timestamps = {
     submitted_at: prev?.dates?.Submitted ? new Date(prev.dates.Submitted).toISOString() : null,
     verified_at:  prev?.dates?.Verified  ? new Date(prev.dates.Verified).toISOString()  : null,
@@ -1966,17 +1356,11 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
     paid_at:      prev?.dates?.Paid      ? new Date(prev.dates.Paid).toISOString()      : null,
     hold_since:   null
   };
-  if (status === 'On Hold') {
-    timestamps.hold_since = stamp;
-  } else if (STAGE_FIELDS[status]) {
-    timestamps[STAGE_FIELDS[status]] = stamp;
-  } else {
-    if (!timestamps.submitted_at) timestamps.submitted_at = stamp;
-  }
-  delete timestamps['undefined'];
+  if (status==='On Hold') timestamps.hold_since = stamp;
+  else timestamps[STAGE_FIELDS[status]] = stamp;
 
   const saveBtn = document.getElementById('saveBtn');
-  if (saveBtn) { saveBtn.textContent='Saving…'; saveBtn.disabled=true; }
+  saveBtn.textContent='Saving…'; saveBtn.disabled=true;
   try {
     // Upload notesheet to Supabase Storage (if new file selected)
     let notesheet_path = prev?.note || null;
@@ -1988,48 +1372,15 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
       else toast('Notesheet upload failed: ' + upErr.message);
     }
     // Upsert bill record in Supabase
-    const authId = (await sb.auth.getUser()).data.user?.id;
-    const payload = {
+    const { data: result, error } = await sb.from('bills').upsert({
       site_id: sid, month_key: mk,
-      billed, penalty, gst, tds, status, remark,
-      payment_mode: ['Paid','Cash','Bill Cleared'].includes(status) ? document.getElementById('fMode').value : (prev?.mode||null),
+      billed, penalty, gst, tds, status,
+      payment_mode: status==='Paid' ? document.getElementById('fMode').value : (prev?.mode||null),
       notesheet_path,
+      updated_by: (await sb.auth.getUser()).data.user?.id,
       ...timestamps
-    };
-    if (authId && authId !== 'demo-id') payload.updated_by = authId;
-
-    let { data: result, error } = await sb.from('bills').upsert(payload, { onConflict: 'site_id,month_key' }).select().single();
-
-    if (error && error.message && error.message.includes('row-level security')) {
-      delete payload.updated_by;
-      const { data: resRls, error: errRls } = await sb.from('bills').upsert(payload, { onConflict: 'site_id,month_key' }).select().single();
-      if (!errRls && resRls) {
-        result = resRls;
-      } else {
-        toast('Save failed: Database security policy blocked save. Run: ALTER TABLE bills DISABLE ROW LEVEL SECURITY; in Supabase SQL Editor.');
-        return;
-      }
-    } else if (error && error.message && (error.message.includes('gst') || error.message.includes('tds'))) {
-      delete payload.gst;
-      delete payload.tds;
-      const { data: res2, error: err2 } = await sb.from('bills').upsert(payload, { onConflict: 'site_id,month_key' }).select().single();
-      if (err2) {
-        if (err2.message && err2.message.includes('bills_status_check')) {
-          payload.status = ['Paid','Bill Cleared','Cash'].includes(status) ? 'Paid' : (status === 'On Hold' ? 'On Hold' : 'Submitted');
-          const { data: res3, error: err3 } = await sb.from('bills').upsert(payload, { onConflict: 'site_id,month_key' }).select().single();
-          if (err3) { toast('Save failed: ' + err3.message); return; }
-          result = res3;
-        } else { toast('Save failed: ' + err2.message); return; }
-      } else { result = res2; }
-    } else if (error && error.message && error.message.includes('bills_status_check')) {
-      payload.status = ['Paid','Bill Cleared','Cash'].includes(status) ? 'Paid' : (status === 'On Hold' ? 'On Hold' : 'Submitted');
-      const { data: res3, error: err3 } = await sb.from('bills').upsert(payload, { onConflict: 'site_id,month_key' }).select().single();
-      if (err3) { toast('Save failed: ' + err3.message); return; }
-      result = res3;
-    } else if (error) {
-      toast('Save failed: ' + error.message);
-      return;
-    }
+    }, { onConflict: 'site_id,month_key' }).select().single();
+    if (error) { toast('Save failed: ' + error.message); return; }
     if (!records[sid]) records[sid]={};
     records[sid][mk] = transformBill(result);
     closeOverlays(); renderAll();
@@ -2037,7 +1388,7 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
   } catch (e) {
     toast('Save failed: '+e.message);
   } finally {
-    if (saveBtn) { saveBtn.textContent='Save bill'; saveBtn.disabled=false; }
+    saveBtn.textContent='Save bill'; saveBtn.disabled=false;
   }
 });
 
@@ -2061,15 +1412,10 @@ function initControls() {
   ms.value = state.month;
   ms.addEventListener('change', () => { state.month=ms.value; renderAll(); });
 
-  document.getElementById('regionSel').addEventListener('change', e => {
-    state.region = e.target.value;
-    updateSiteDropdown();
-    renderAll();
-  });
-  document.getElementById('siteSel').addEventListener('change', e => {
-    state.siteId = e.target.value;
-    renderAll();
-  });
+  const regions = [...new Set(sites.map(s=>s.region))];
+  document.getElementById('regionSel').innerHTML =
+    `<option value="all">All regions</option>` + regions.map(r=>`<option>${r}</option>`).join('');
+  document.getElementById('regionSel').addEventListener('change',e=>{ state.region=e.target.value; renderAll(); });
   document.getElementById('statusSel').addEventListener('change',e=>{ state.status=e.target.value; renderTable(); });
   document.getElementById('searchBox').addEventListener('input', e=>{ state.search=e.target.value; renderTable(); });
 
@@ -2117,6 +1463,43 @@ function toggleTheme() {
 }
 
 /* ============================================================
+   Render orchestration
+   ============================================================ */
+function cssVar(n) { return getComputedStyle(document.body).getPropertyValue(n).trim(); }
+function renderCharts() {
+  const s = seriesForRegion(state.region);
+  lineChart('trendChart', MONTHS, [
+    { name:'Gross billed', color:cssVar('--billed'), values:s.billed, fill:true },
+    { name:'Net payable',  color:cssVar('--net'),    values:s.net }
+  ]);
+  barChart('penaltyChart', MONTHS, s.penalty, cssVar('--penalty'));
+}
+/* Role-based UI gating — hides write / flag controls the current role can't use */
+function applyRole() {
+  const role = currentUser?.role || 'admin';
+  const addBtn  = document.getElementById('addBtn');
+  const flagBtn = document.getElementById('flagBtn');
+  if (addBtn)  addBtn.style.display  = canWrite() ? '' : 'none';
+  if (flagBtn) flagBtn.style.display = canFlag()  ? '' : 'none';
+  const adminBtn = document.getElementById('adminBtn');
+  if (adminBtn) adminBtn.style.display = role === 'admin' ? '' : 'none';
+  const cityReqBtn = document.getElementById('cityReqBtn');
+  if (cityReqBtn) cityReqBtn.style.display = role === 'leadership' ? '' : 'none';
+  const ROLE_LABEL = {
+    accounts:'Accounts team · bill entry', billing_manager:'Billing Manager', site_manager:'Site Manager',
+    leadership:'VP / CEO · monitoring', admin:'Admin', executive:'Executive'
+  };
+  const sub = document.querySelector('.brand p');
+  if (sub) {
+    const of = flags.length;
+    sub.textContent = (ROLE_LABEL[role] || role)
+      + ' · ' + sites.length + ' site' + (sites.length===1?'':'s') + ' visible'
+      + (of ? ' · 🚩 ' + of + ' open flag' + (of===1?'':'s') : '');
+  }
+}
+function renderAll() { applyRole(); renderKpis(); renderCharts(); renderFunnel(); renderModes(); renderTable(); }
+
+/* ============================================================
    Admin — create logins & assign roles / sites (admin only)
    ============================================================ */
 function roleOptionsHtml(sel) {
@@ -2158,14 +1541,12 @@ async function loadUsers() {
   tbl.innerHTML = `<thead><tr><th>Name</th><th>Email / login</th><th>Role</th><th>Sites</th></tr></thead><tbody>` +
     (profs || []).map(p => {
       const ids = byUser[p.id] || [];
-      const isAdmin = p.role === 'admin' || p.role === 'leadership';
-      const displayName = p.full_name || p.email?.split('@')[0] || 'User';
-      const displayEmail = p.email || '—';
+      const scoped = p.role==='billing_manager' || p.role==='site_manager';
       return `<tr>
-        <td><strong>${displayName}</strong></td>
-        <td class="site-region">${displayEmail}</td>
+        <td>${p.full_name || '—'}</td>
+        <td class="site-region">${p.email || '—'}</td>
         <td><select data-uid="${p.id}" class="roleSel" style="min-width:150px">${roleOptionsHtml(p.role)}</select></td>
-        <td>${isAdmin ? '<span class="note-none">all sites (admin)</span>' : `${ids.length} site${ids.length===1?'':'s'} <span class="note-chip" data-editsites="${p.id}">✎ edit sites</span>`}</td>
+        <td>${scoped ? `${ids.length} site${ids.length===1?'':'s'} <span class="note-chip" data-editsites="${p.id}">✎ edit</span>` : '<span class="note-none">all sites</span>'}</td>
       </tr>`;
     }).join('') + `</tbody>`;
   tbl.querySelectorAll('.roleSel').forEach(sel => sel.addEventListener('change', () => saveRole(sel.dataset.uid, sel.value)));
@@ -2183,7 +1564,6 @@ function editUserSites(uid) {
   const ids = (window.__asgByUser || {})[uid] || [];
   siteCheckboxes('seSites', ids);
   document.getElementById('siteEditor').style.display = 'block';
-  document.getElementById('siteEditor').scrollIntoView({ behavior: 'smooth' });
 }
 
 async function saveUserSites() {
@@ -2191,7 +1571,7 @@ async function saveUserSites() {
   const ids = checkedSiteIds('seSites');
   await sb.from('site_assignments').delete().eq('user_id', editingSitesFor);
   if (ids.length) await sb.from('site_assignments').insert(ids.map(site_id => ({ user_id: editingSitesFor, site_id })));
-  toast('Sites updated successfully');
+  toast('Sites updated');
   document.getElementById('siteEditor').style.display = 'none';
   editingSitesFor = null;
   loadUsers();
@@ -2204,42 +1584,14 @@ async function createUserAdmin() {
   const role      = document.getElementById('auRole').value;
   if (!email || !password)   { toast('Enter email and password'); return; }
   if (password.length < 6)   { toast('Password must be 6+ characters'); return; }
-  const siteIds = checkedSiteIds('auSites');
+  const siteIds = ['billing_manager','site_manager'].includes(role) ? checkedSiteIds('auSites') : [];
   const btn = document.getElementById('auCreate'); btn.textContent = 'Creating…'; btn.disabled = true;
   try {
-    // Step 1: Create the user via Supabase Auth signUp
-    const { data: signUpData, error: signUpErr } = await sb.auth.signUp({
-      email,
-      password,
-      options: { data: { full_name } }
+    const { data, error } = await sb.functions.invoke('admin-create-user', {
+      body: { email, password, full_name, role, siteIds }
     });
-    if (signUpErr) { toast('Create failed: ' + signUpErr.message); return; }
-
-    const newUserId = signUpData?.user?.id;
-    if (!newUserId) { toast('User created — confirm email in Supabase Auth dashboard'); loadUsers(); return; }
-
-    // Step 2: Update profile with correct role, full_name, and email
-    const { error: profileErr } = await sb.from('user_profiles')
-      .upsert({ id: newUserId, full_name: full_name || email.split('@')[0], email, role })
-      .eq('id', newUserId);
-    if (profileErr) { toast('User created but profile update failed: ' + profileErr.message); }
-
-    // Step 3: Assign selected sites/cities to the new user
-    if (siteIds.length) {
-      await sb.from('site_assignments').delete().eq('user_id', newUserId);
-      await sb.from('site_assignments').insert(siteIds.map(site_id => ({ user_id: newUserId, site_id })));
-    }
-
-    const assignedNames = sites.filter(s => siteIds.includes(s.id)).map(s => s.name).join(', ');
-    const roleTxt = ROLE_META.find(r => r[0] === role)?.[1] || role;
-    addNotification(
-      '🔔 New User & Site Assigned',
-      `Admin created account for ${full_name || email} (${roleTxt})${assignedNames ? ' assigned to ' + assignedNames : ''}.`,
-      'user_created',
-      'leadership'
-    );
-
-    toast('✅ User created — ' + email);
+    if (error || data?.error) { toast('Create failed: ' + (data?.error || error.message)); return; }
+    toast('Login created — ' + email);
     ['auName','auEmail','auPass'].forEach(id => document.getElementById(id).value = '');
     siteCheckboxes('auSites', []);
     loadUsers();
@@ -2259,8 +1611,6 @@ async function refreshSites() {
   rs.innerHTML = `<option value="all">All regions</option>` + regions.map(r => `<option>${r}</option>`).join('');
   rs.value = [...rs.options].some(o => o.value === cur) ? cur : 'all';
   if (rs.value === 'all') state.region = 'all';
-  const curChecked = checkedSiteIds('auSites');
-  siteCheckboxes('auSites', curChecked);
   renderAll();
 }
 
@@ -2377,98 +1727,9 @@ async function submitCityReq() {
   closeOverlays();
 }
 
-/* ============================================================
-   Workflow Editor (Per Site)
-   ============================================================ */
-let editingWfSiteId = null;
-let currentEditingWfSteps = [];
-
-function openWorkflowEditor(siteId) {
-  editingWfSiteId = siteId;
-  const s = sites.find(x => x.id === siteId);
-  if (!s) return;
-  document.getElementById('wfModalTitle').textContent = 'Customize Billing Flow — ' + s.name;
-  document.getElementById('wfModalSub').textContent = 'Add, remove, or reorder steps specifically for ' + s.name + '.';
-  currentEditingWfSteps = [...getSiteSteps(s)];
-  renderWfStepList();
-  openOverlay('wfOverlay');
-}
-
-function renderWfStepList() {
-  const container = document.getElementById('wfStepList');
-  if (!container) return;
-  container.innerHTML = currentEditingWfSteps.map((step, idx) => `
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:8px">
-      <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600">
-        <span style="color:var(--muted);width:22px">${idx + 1}.</span>
-        <span>${step}</span>
-      </div>
-      <div style="display:flex;gap:4px">
-        ${idx > 0 ? `<button class="btn" style="padding:2px 7px;font-size:11px" type="button" onclick="moveWfStep(${idx}, -1)">▲</button>` : ''}
-        ${idx < currentEditingWfSteps.length - 1 ? `<button class="btn" style="padding:2px 7px;font-size:11px" type="button" onclick="moveWfStep(${idx}, 1)">▼</button>` : ''}
-        ${currentEditingWfSteps.length > 1 ? `<button class="btn" style="padding:2px 7px;font-size:11px;color:var(--bad)" type="button" onclick="removeWfStep(${idx})">✕</button>` : ''}
-      </div>
-    </div>
-  `).join('');
-}
-
-function moveWfStep(idx, dir) {
-  const target = idx + dir;
-  if (target < 0 || target >= currentEditingWfSteps.length) return;
-  const temp = currentEditingWfSteps[idx];
-  currentEditingWfSteps[idx] = currentEditingWfSteps[target];
-  currentEditingWfSteps[target] = temp;
-  renderWfStepList();
-}
-
-function removeWfStep(idx) {
-  if (currentEditingWfSteps.length <= 1) { toast('At least 1 step is required'); return; }
-  currentEditingWfSteps.splice(idx, 1);
-  renderWfStepList();
-}
-
-function addWfStep() {
-  const input = document.getElementById('newWfStepInput');
-  const val = input ? input.value.trim() : '';
-  if (!val) { toast('Enter step name'); return; }
-  if (currentEditingWfSteps.includes(val)) { toast('Step already exists'); return; }
-  currentEditingWfSteps.push(val);
-  if (input) input.value = '';
-  renderWfStepList();
-}
-
-function resetWfSteps() {
-  currentEditingWfSteps = [...DEFAULT_WORKFLOW_STEPS];
-  renderWfStepList();
-  toast('Reset to default 13 steps');
-}
-
-async function saveWfForSite() {
-  if (!editingWfSiteId) return;
-  const s = sites.find(x => x.id === editingWfSiteId);
-  if (!s) return;
-  const btn = document.getElementById('saveWfBtn');
-  if (btn) { btn.textContent = 'Saving…'; btn.disabled = true; }
-  try {
-    const { error } = await sb.from('sites').update({ workflow_steps: currentEditingWfSteps }).eq('id', editingWfSiteId);
-    if (error) { toast('Save failed: ' + error.message); return; }
-    s.workflow_steps = currentEditingWfSteps;
-    toast('✅ Billing flow updated for ' + s.name);
-    closeOverlays();
-    renderAll();
-  } catch (e) {
-    toast('Save failed: ' + e.message);
-  } finally {
-    if (btn) { btn.textContent = 'Save for this site'; btn.disabled = false; }
-  }
-}
-
 /* ── Boot ── */
-initControls();
-document.getElementById('addWfStepBtn')?.addEventListener('click', addWfStep);
-document.getElementById('resetWfBtn')?.addEventListener('click', resetWfSteps);
-document.getElementById('saveWfBtn')?.addEventListener('click', saveWfForSite);
-document.getElementById('newWfStepInput')?.addEventListener('keydown', e => { if (e.key === 'Enter') addWfStep(); });
+document.getElementById('loginBtn').addEventListener('click', doLogin);
+document.getElementById('loginPass').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
 initApp();
 </script>
 </body>

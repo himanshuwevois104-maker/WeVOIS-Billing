@@ -190,9 +190,21 @@
     <div class="logo">W</div>
     <div>
       <h1>Leadership Overview</h1>
-      <p id="subline">Company-wide billing health · debtor ageing · deductions</p>
+      <p id="subline">Company-wide billing health · CRM ground progress · deductions</p>
     </div>
     <div class="spacer"></div>
+    <div style="position:relative;margin-right:8px">
+      <button class="btn" id="notifBell" title="Notifications" style="position:relative">
+        🔔 <span id="notifBadge" style="display:none;position:absolute;top:-4px;right:-4px;background:var(--bad);color:#fff;font-size:10px;font-weight:800;border-radius:999px;padding:2px 5px;min-width:16px;text-align:center">0</span>
+      </button>
+      <div id="notifPopover" style="display:none;position:absolute;right:0;top:40px;width:340px;background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);z-index:250;padding:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)">
+          <strong style="font-size:13px">🔔 Live System Notifications</strong>
+          <button id="markReadBtn" class="mini" style="font-size:11px;color:var(--brand)">Mark all read</button>
+        </div>
+        <div id="notifList" style="max-height:280px;overflow-y:auto;display:flex;flex-direction:column;gap:8px"></div>
+      </div>
+    </div>
     <span class="badge-user" id="userBadge"></span>
     <button class="btn" id="themeBtn" title="Toggle theme">◐</button>
     <button class="btn" id="exportBtn">⬇ Export report</button>
@@ -219,8 +231,8 @@
   <div class="card" style="margin-bottom:16px">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
       <div>
-        <h2>Billing Managers &amp; Assigned Sites</h2>
-        <p class="cap" style="margin:0">Click on a Billing Manager to view assigned municipal sites and click any site to view detailed analytics &amp; charts.</p>
+        <h2>Billing Managers (WeVOIS HQ) &amp; Assigned Sites</h2>
+        <p class="cap" style="margin:0">Click on a Billing Manager to view assigned municipal sites, CRM ground progress, and click any site to view detailed analytics &amp; charts.</p>
       </div>
     </div>
     <div id="bmCards" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));gap:14px;margin-top:14px"></div>
@@ -228,12 +240,12 @@
 
   <div class="card" style="margin-bottom:16px">
     <h2>Overdue sites — action list</h2>
-    <p class="cap">Unpaid bills, most overdue first · raise a flag for Accounts &amp; Billing Managers to action</p>
+    <p class="cap">Unpaid bills, most overdue first · CRM ground progress · raise a flag for Accounts &amp; Billing Managers to action</p>
     <div style="overflow-x:auto">
       <table id="overdueTable">
         <thead><tr>
           <th>Site</th><th>Region</th><th>Month</th>
-          <th class="num">Net due</th><th>Ageing</th><th class="num">Days</th><th>Stage</th><th>Bill Document</th><th>Action</th>
+          <th class="num">Net due</th><th>Ageing</th><th class="num">Days</th><th>CRM Progress</th><th>Stage</th><th>Bill Document</th><th>Action</th>
         </tr></thead>
         <tbody id="overdueBody"></tbody>
       </table>
@@ -681,27 +693,37 @@ function renderSiteSvgChart(containerId, months, billedArr, netArr) {
 function unpaidBills(){ return bills.filter(b=>b.status && b.status!=='Paid'); }
 
 function renderKpis(){
-  const unpaid = unpaidBills();
-  let outstanding=0, stuck60=0, stuck90=0;
-  unpaid.forEach(b=>{ const n=netOf(b); outstanding+=n; const d=daysOutstanding(b);
-    if(d!=null&&d>60) stuck60+=n; if(d!=null&&d>90) stuck90+=n; });
-  let pen=0,gst=0,tds=0; bills.forEach(b=>{ pen+=b.penalty||0; gst+=b.gst||0; tds+=b.tds||0; });
-  const totalDed = pen+gst+tds;
-  const openFlags = flags.length;
+  let totalBilled = 0, totalReceived = 0, totalPendency = 0;
+  let pen=0, gst=0, tds=0;
+  bills.forEach(b => {
+    const gross = b.billed || 0;
+    const net = netOf(b);
+    totalBilled += gross;
+    pen += b.penalty || 0;
+    gst += b.gst || 0;
+    tds += b.tds || 0;
+    if (b.status === 'Paid' || b.status === 'Bill Cleared' || b.status === 'Cash') {
+      totalReceived += net;
+    } else if (b.status) {
+      totalPendency += net;
+    }
+  });
+
+  const bmCount = profiles.filter(p => p.role === 'billing_manager').length;
   const cards = [
-    { lab:'Total outstanding', val:short(outstanding), sub:unpaid.length+' unpaid bills', accent:'var(--penalty)' },
-    { lab:'Stuck 60+ days',    val:short(stuck60),     sub:'needs escalation',           accent:'var(--g2)' },
-    { lab:'Stuck 90+ days',    val:short(stuck90),     sub:'critical · daily mail',       accent:'var(--g3)' },
-    { lab:'Total deductions',  val:short(totalDed),    sub:`Pen ${short(pen)} · GST ${short(gst)} · TDS ${short(tds)}`, accent:'var(--billed)' }
+    { lab: 'Total Bill Generated', val: short(totalBilled), sub: bills.length + ' bills generated', accent: 'var(--billed)' },
+    { lab: 'Total Received',       val: short(totalReceived), sub: 'settled by cash branch', accent: 'var(--net)' },
+    { lab: 'Total Pendency',       val: short(totalPendency), sub: unpaidBills().length + ' pending bills', accent: 'var(--penalty)' },
+    { lab: 'Billing Managers',     val: bmCount + ' HQ Managers', sub: sites.length + ' municipal sites', accent: 'var(--brand)' }
   ];
-  document.getElementById('kpis').innerHTML = cards.map(c=>`
+  document.getElementById('kpis').innerHTML = cards.map(c => `
     <div class="kpi" style="--accent:${c.accent}">
       <div class="lab">${c.lab}</div>
       <div class="val">${c.val}</div>
       <div class="sub">${c.sub}</div>
     </div>`).join('');
   document.getElementById('subline').textContent =
-    `${sites.length} sites · ${openFlags} open flag${openFlags===1?'':'s'} · ${requests.filter(r=>r.status==='pending').length} pending city request(s)`;
+    `${sites.length} municipal sites · ${bmCount} Billing Managers (HQ) · ${flags.length} open flag(s)`;
 }
 
 function renderAgeing(){
@@ -747,12 +769,18 @@ function renderOverdue(){
     return { b, s, d:d==null?-1:d, net:netOf(b) }; })
     .filter(r=>r.s).sort((a,bb)=>bb.d-a.d);
   const body = document.getElementById('overdueBody');
-  if(!rows.length){ body.innerHTML='<tr><td colspan="9" class="empty">No outstanding bills 🎉</td></tr>'; return; }
+  if(!rows.length){ body.innerHTML='<tr><td colspan="10" class="empty">No outstanding bills 🎉</td></tr>'; return; }
   body.innerHTML = rows.map(r=>{
     const bk = r.d>=0 ? bucketOf(r.d) : null;
     const fl = flagMap[flagKey(r.s.id, r.b.month_key)];
     const note = r.b.notesheet_path;
     const isPdf = note ? note.toLowerCase().endsWith('.pdf') : false;
+    
+    // Resolve CRM profile for site
+    const asg = siteAssignments.find(a => a.site_id === r.s.id);
+    const crmProf = asg ? profiles.find(p => p.id === asg.user_id && (p.role === 'site_manager' || p.role === 'executive')) : null;
+    const crmName = crmProf ? (crmProf.full_name || crmProf.email.split('@')[0]) : 'Ground CRM';
+
     return `<tr>
       <td>${fl?'🚩 ':''}<b>${r.s.name}</b></td>
       <td style="color:var(--ink-2)">${r.s.region||'—'}</td>
@@ -760,6 +788,7 @@ function renderOverdue(){
       <td class="num" style="font-weight:650">${rupees(r.net)}</td>
       <td>${bk?`<span class="pill" style="background:${cssVar(bk.cssv)}22;color:${cssVar(bk.cssv)}">${bk.range}</span>`:'—'}</td>
       <td class="num">${r.d>=0?r.d+'d':'—'}</td>
+      <td style="color:var(--brand);font-weight:600">👤 ${crmName}</td>
       <td style="color:var(--ink-2)">${r.b.status}</td>
       <td>${note ? `<button class="mini" data-vnote="${note}" data-sname="${r.s.name}" data-mk="${r.b.month_key}" style="border:1px solid var(--brand);color:var(--brand);background:transparent;border-radius:6px;padding:3px 8px;cursor:pointer;font-weight:600">${isPdf?'📄 PDF':'📎 View'}</button>` : '<span style="color:var(--muted)">—</span>'}</td>
       <td>${fl?'<span class="flagged">flagged</span>':`<button class="flagbtn" data-flag="${r.s.id}|${r.b.month_key}">🚩 Flag</button>`}</td>
@@ -899,6 +928,43 @@ function exportReport(){
   toast('CSV downloaded · use Print for PDF');
 }
 
+let notifications = [];
+
+async function loadNotifications() {
+  try {
+    const { data } = await sb.from('notifications').select('*').order('created_at', { ascending: false }).limit(20);
+    notifications = data || [];
+    renderNotifications();
+  } catch(e) {}
+}
+
+function renderNotifications() {
+  const badge = document.getElementById('notifBadge');
+  const list = document.getElementById('notifList');
+  if (!badge || !list) return;
+
+  const unread = notifications.filter(n => !n.read).length;
+  if (unread > 0) {
+    badge.textContent = unread;
+    badge.style.display = 'inline-block';
+  } else {
+    badge.style.display = 'none';
+  }
+
+  if (!notifications.length) {
+    list.innerHTML = `<div style="font-size:12px;color:var(--muted);text-align:center;padding:12px">No system notifications.</div>`;
+    return;
+  }
+
+  list.innerHTML = notifications.map(n => `
+    <div style="padding:8px 10px;background:${n.read ? 'transparent' : 'var(--surface-2)'};border-radius:8px;border-left:3px solid var(--brand);font-size:12px">
+      <div style="font-weight:750;margin-bottom:2px">${n.title}</div>
+      <div style="color:var(--ink-2);line-height:1.35">${n.message}</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px">${new Date(n.created_at).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' })}</div>
+    </div>
+  `).join('');
+}
+
 /* ---- boot ---- */
 document.getElementById('lgBtn').addEventListener('click', doLogin);
 document.getElementById('lgPass').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
@@ -908,6 +974,20 @@ document.getElementById('logoutBtn').addEventListener('click', async ()=>{ await
 document.getElementById('themeBtn').addEventListener('click', ()=>{
   const el=document.documentElement; el.setAttribute('data-theme', el.getAttribute('data-theme')==='dark'?'light':'dark');
   if(currentUser) renderAll();
+});
+document.getElementById('notifBell').addEventListener('click', e => {
+  e.stopPropagation();
+  const pop = document.getElementById('notifPopover');
+  pop.style.display = pop.style.display === 'none' ? 'block' : 'none';
+});
+document.getElementById('markReadBtn').addEventListener('click', async () => {
+  notifications.forEach(n => n.read = true);
+  renderNotifications();
+  try { await sb.from('notifications').update({ read: true }).eq('read', false); } catch(e){}
+});
+document.addEventListener('click', e => {
+  const pop = document.getElementById('notifPopover');
+  if (pop && !pop.contains(e.target) && e.target.id !== 'notifBell') pop.style.display = 'none';
 });
 document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click', ()=>document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('open'))));
 document.addEventListener('keydown', e=>{ if(e.key==='Escape') document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('open')); });
@@ -922,7 +1002,7 @@ document.addEventListener('keydown', e=>{ if(e.key==='Escape') document.querySel
       document.getElementById('loginScreen').style.display='none';
       document.getElementById('app').style.display='';
       document.getElementById('userBadge').textContent = (prof.full_name||'Leadership')+' · '+(prof.role==='admin'?'Admin':'VP / CEO');
-      await loadData(); renderAll();
+      await loadData(); await loadNotifications(); renderAll();
     }
   }
 })();

@@ -88,7 +88,21 @@ CREATE TRIGGER bills_updated_at
   FOR EACH ROW EXECUTE FUNCTION touch_updated_at();
 
 
--- ── 5. Supabase Storage bucket ────────────────────────────────────────────────
+-- ── 5. Notifications ─────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS notifications (
+  id             SERIAL PRIMARY KEY,
+  user_id        UUID REFERENCES user_profiles(id) ON DELETE CASCADE,
+  recipient_role TEXT CHECK(recipient_role IN ('leadership', 'billing_manager', 'site_manager', 'admin', 'all')),
+  site_id        INTEGER REFERENCES sites(id) ON DELETE CASCADE,
+  title          TEXT NOT NULL,
+  message        TEXT NOT NULL,
+  type           TEXT CHECK(type IN ('user_created', 'site_assigned', 'bill_uploaded', 'stage_updated', 'flag_raised')),
+  read           BOOLEAN DEFAULT FALSE,
+  created_at     TIMESTAMPTZ DEFAULT NOW()
+);
+
+
+-- ── 6. Supabase Storage bucket ────────────────────────────────────────────────
 -- Run in SQL Editor:
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('notesheets', 'notesheets', false)
