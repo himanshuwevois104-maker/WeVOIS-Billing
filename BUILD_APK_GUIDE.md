@@ -1,56 +1,50 @@
-# WeVois Billing CRM — Android APK & PWA Build Guide
+# WeVois Billing CRM — Android APK & PWA Package Guide
 
-This guide explains how to install the **WeVois CRM Mobile App** on Android devices as a native-like PWA app or generate a signed `.apk` file using Capacitor / Bubblewrap CLI.
+This repository contains the complete native Android packaging files (`capacitor.config.json`, `manifest.json`, `sw.js`, and `android/app/src/main/AndroidManifest.xml`) for **WeVois Billing CRM**.
 
 ---
 
-## Method 1: Instant PWA Mobile Installation (No Build Required)
+## 📱 Method 1: Instant Mobile App Installation (Recommended — 10 Seconds)
 
-1. Open **Google Chrome** or **Safari** on your mobile device.
+1. Open **Google Chrome** on your Android phone.
 2. Navigate to: **[https://wevoisbilling.vercel.app/wevois-billing-executive-app.html](https://wevoisbilling.vercel.app/wevois-billing-executive-app.html)**
-3. Tap the browser **Menu (⋮)** or **Share Button** ➔ Select **"Add to Home Screen"** or **"Install App"**.
-4. The **WeVois CRM** app icon will appear on your phone's home screen as a standalone mobile application with full Camera & Gallery access.
+3. Tap the browser **Menu (⋮)** in the top right.
+4. Select **"Add to Home Screen"** or **"Install App"**.
+5. The **WeVois CRM** icon will appear on your mobile home screen as a standalone Android app with full Camera & Storage access!
 
 ---
 
-## Method 2: Building Native `.apk` with Bubblewrap TWA CLI
+## 🛠️ Method 2: Building `.apk` File via PWABuilder (Online — 1 Click)
 
-Run the following commands in your terminal:
+1. Go to **[https://www.pwabuilder.com/](https://www.pwabuilder.com/)**
+2. Enter your app URL: `https://wevoisbilling.vercel.app/wevois-billing-executive-app.html`
+3. Click **"Build My PWA"** ➔ Select **"Android"**.
+4. Click **"Download APK"**. You will receive your signed `app-release-signed.apk` file ready to install on any Android phone or upload to Google Play Console!
 
+---
+
+## 💻 Method 3: Building `.apk` via Command Line (Bubblewrap / Android Studio)
+
+### Using Bubblewrap CLI:
 ```bash
-# 1. Install Node TWA Builder
+# 1. Install TWA CLI
 npm install -g @bubblewrap/cli
 
-# 2. Generate Android Project from Web Manifest
+# 2. Generate APK
 bubblewrap init --manifest=https://wevoisbilling.vercel.app/manifest.json
-
-# 3. Build APK
 bubblewrap build
 ```
 
-This generates `app-release-signed.apk` in your build folder, which can be directly installed on Android phones or uploaded to Google Play Console.
-
----
-
-## Method 3: Building Native `.apk` with Capacitor & Android Studio
-
+### Using Android Studio:
 ```bash
-# 1. Initialize Capacitor
-npx cap init "WeVois Billing CRM" "com.wevois.billingcrm"
-
-# 2. Add Android Platform
-npx cap add android
-
-# 3. Open in Android Studio & Build APK
+# Open android directory in Android Studio
 npx cap open android
 ```
-
-In Android Studio:
-1. Go to **Build ➔ Build Bundle(s) / APK(s) ➔ Build APK(s)**.
-2. The generated `.apk` file will be located at `android/app/build/outputs/apk/debug/app-debug.apk`.
+In Android Studio: Go to **Build ➔ Build Bundle(s) / APK(s) ➔ Build APK(s)**.
 
 ---
 
-## Permissions Configured in Mobile App:
-- 📷 **Camera**: `android.permission.CAMERA` (Live photo capture of notesheets / cleared bills).
-- 🖼️ **Gallery / Storage**: `android.permission.READ_MEDIA_IMAGES` & `READ_EXTERNAL_STORAGE` (Selecting photos or PDFs from device gallery).
+## 📋 Configured Android Permissions:
+- 📷 **Camera**: `android.permission.CAMERA`
+- 🖼️ **Gallery / Storage**: `android.permission.READ_MEDIA_IMAGES` & `READ_EXTERNAL_STORAGE`
+- 🌐 **Internet**: `android.permission.INTERNET`
