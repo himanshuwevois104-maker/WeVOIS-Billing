@@ -1660,10 +1660,15 @@ async function openNote(siteId, mk) {
   pdfLinkWrap.style.display = 'none';
   openOverlay('noteOverlay');
 
+  let url = null;
   const { data, error } = await sb.storage.from('notesheets').createSignedUrl(r.note, 3600);
-  if (error || !data?.signedUrl) { toast('Could not load bill document: ' + (error?.message || 'Url failed')); return; }
-
-  const url = data.signedUrl;
+  if (!error && data?.signedUrl) {
+    url = data.signedUrl;
+  } else {
+    const { data: pubData } = sb.storage.from('notesheets').getPublicUrl(r.note);
+    url = pubData?.publicUrl;
+  }
+  if (!url) { toast('Could not load bill document'); return; }
   const isPdf = r.note.toLowerCase().endsWith('.pdf') || url.toLowerCase().includes('.pdf');
 
   if (isPdf) {

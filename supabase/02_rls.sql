@@ -74,19 +74,14 @@ CREATE POLICY "bills_all_access" ON bills
 
 -- ── Storage (notesheets bucket) ───────────────────────────────────────────────
 DROP POLICY IF EXISTS "notesheet_upload" ON storage.objects;
-CREATE POLICY "notesheet_upload" ON storage.objects
-  FOR INSERT WITH CHECK (
-    bucket_id = 'notesheets' AND auth.role() = 'authenticated'
-  );
-
 DROP POLICY IF EXISTS "notesheet_read" ON storage.objects;
-CREATE POLICY "notesheet_read" ON storage.objects
-  FOR SELECT USING (
-    bucket_id = 'notesheets' AND auth.role() = 'authenticated'
-  );
+DROP POLICY IF EXISTS "notesheet_public_read" ON storage.objects;
 
-DROP POLICY IF EXISTS "notesheet_update" ON storage.objects;
+CREATE POLICY "notesheet_upload" ON storage.objects
+  FOR INSERT WITH CHECK (bucket_id = 'notesheets');
+
+CREATE POLICY "notesheet_public_read" ON storage.objects
+  FOR SELECT USING (bucket_id = 'notesheets');
+
 CREATE POLICY "notesheet_update" ON storage.objects
-  FOR UPDATE USING (
-    bucket_id = 'notesheets' AND auth.role() = 'authenticated'
-  );
+  FOR UPDATE USING (bucket_id = 'notesheets');
