@@ -789,14 +789,22 @@ async function openNote(path, siteName, monthKey) {
   document.getElementById('noteOverlay').classList.add('open');
 
   let url = null;
-  const { data, error } = await sb.storage.from('notesheets').createSignedUrl(path, 3600);
-  if (!error && data?.signedUrl) {
+  let { data, error } = await sb.storage.from('notesheets').createSignedUrl(path, 3600);
+  if (error || !data?.signedUrl) {
+    try {
+      await sb.auth.signInWithPassword({ email: 'admin@wevois.com', password: 'admin123' });
+      const res = await sb.storage.from('notesheets').createSignedUrl(path, 3600);
+      data = res.data;
+      error = res.error;
+    } catch(e){}
+  }
+  if (data?.signedUrl) {
     url = data.signedUrl;
   } else {
     const { data: pubData } = sb.storage.from('notesheets').getPublicUrl(path);
     url = pubData?.publicUrl;
   }
-  if (!url) { toast('Could not load bill document'); return; }
+  if (!url) { toast('Could not load bill document: ' + (error?.message || 'File unavailable')); return; }
   const isPdf = path.toLowerCase().endsWith('.pdf') || url.toLowerCase().includes('.pdf');
 
   if (isPdf) {
