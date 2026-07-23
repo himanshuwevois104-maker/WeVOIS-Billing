@@ -1086,19 +1086,21 @@ let emailConfig = {
 };
 
 async function sendEmail(to, subject, bodyText, htmlContent = null) {
+  const recipients = Array.isArray(to) ? to : [to];
   const from = `${emailConfig.senderName} <${emailConfig.senderEmail}>`;
-  console.log(`[EMAIL DISPATCH] From: ${from} | To: ${to} | Subject: ${subject}`);
+  console.log(`[AUTOMATIC EMAIL DISPATCH] From: ${from} | To: ${recipients.join(', ')} | Subject: ${subject}`);
+  
   try {
     if (emailConfig.apiKey) {
       await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: { "Authorization": `Bearer ${emailConfig.apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ from: emailConfig.senderEmail, to: Array.isArray(to) ? to : [to], subject, text: bodyText, html: htmlContent })
+        body: JSON.stringify({ from: emailConfig.senderEmail, to: recipients, subject, text: bodyText, html: htmlContent })
       });
       return true;
     }
   } catch(e) {
-    console.error('API Mailer failed, falling back to logger:', e);
+    console.error('API Mailer error:', e);
   }
   return true;
 }
@@ -1130,15 +1132,10 @@ async function handleSendTestEmail() {
   if (btn) { btn.textContent = 'Sending…'; btn.disabled = true; }
   try {
     const subject = '🧪 Test Email from WeVois Billing System';
-    const bodyText = `This is a test notification from WeVois Billing System.\n\nSender Email: ${emailConfig.senderEmail}\nTimestamp: ${new Date().toLocaleString()}`;
+    const bodyText = `This is an automated test notification from WeVois Billing System.\n\nSender Email: ${emailConfig.senderEmail}\nTimestamp: ${new Date().toLocaleString()}`;
     
     await sendEmail(to, subject, bodyText);
-
-    // Trigger direct mailto compose window for instant local mail composition
-    const mailtoUrl = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyText)}`;
-    window.open(mailtoUrl, '_blank');
-
-    toast('✅ Test email dispatched to ' + to);
+    toast('✅ Automated test email sent to ' + to);
   } catch(e) {
     toast('Test email failed: ' + e.message);
   } finally {
