@@ -1,0 +1,24 @@
+{
+  "name": "WeVois Billing CRM App",
+  "short_name": "WeVois CRM",
+  "description": "Client Relationship Manager mobile app for WeVois billing status, stage advancement, and deductions tracking.",
+  "start_url": "/wevois-billing-executive-app.html",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0f7a4f",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://wevoisbilling.vercel.app/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://wevoisbilling.vercel.app/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
