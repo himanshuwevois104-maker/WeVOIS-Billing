@@ -1151,6 +1151,43 @@ function ageingCell(rec) {
   return `<span class="age ${b.key}" title="${b.range} · ${b.mail}">${b.range} · ${d}d</span>`;
 }
 
+// Automatic Email Alert Trigger for 3rd Stage (61-90 days billing cycle) to VP & CEO
+function checkAndShoot61to90Alerts() {
+  const sentAlerts = JSON.parse(localStorage.getItem('alerts_sent_61_90') || '{}');
+  const leadershipRecipients = getLeadershipEmails(); // Mr. Amit Bhateja (Amit@wevois.com), Abhishek Gupta (Abhishek@wevois.com)
+
+  sites.forEach(s => {
+    MONTHS.forEach(m => {
+      const rec = records[s.id]?.[m.key];
+      if (rec && rec.reported && rec.status !== 'Paid') {
+        const d = debtorDays(rec);
+        if (d != null && d >= 61 && d <= 90) {
+          const alertKey = `${s.id}_${m.key}`;
+          if (!sentAlerts[alertKey]) {
+            sentAlerts[alertKey] = new Date().toISOString();
+            localStorage.setItem('alerts_sent_61_90', JSON.stringify(sentAlerts));
+
+            const netAmt = rupees(rec.net || (rec.billed - (rec.penalty||0) - (rec.gst||0) - (rec.tds||0)));
+            sendEmail(
+              leadershipRecipients,
+              `🔴 ULTRA ALERT: Bill 61–90 Days Overdue — ${s.name} (${m.label})`,
+              `ALERT TO LEADERSHIP (VP & CEO):\n\nThe bill for ${s.name} (${m.label}) has reached Stage 3 (61–90 Days Overdue Billing Cycle).\n\nSite: ${s.name} (${s.region || 'Rajasthan'})\nMonth: ${m.label}\nDays Outstanding: ${d} days\nNet Outstanding: ${netAmt}\nCurrent Stage: ${rec.status}\n\nSender: ${emailConfig.senderEmail}\nRecipients: ${leadershipRecipients.join(', ')}`
+            );
+
+            addNotification(
+              '🔴 61–90 Days Stage Escalation',
+              `Bill for ${s.name} (${m.label}) has reached 61–90 days overdue (${d} days). Information email sent to VP & CEO.`,
+              'stage_updated',
+              'leadership',
+              s.id
+            );
+          }
+        }
+      }
+    });
+  });
+}
+
 /* ============================================================
    State
    ============================================================ */
@@ -1280,7 +1317,7 @@ function renderBillingManagers() {
   }).join('');
 }
 
-function renderAll() { applyRole(); renderKpis(); renderCharts(); renderFunnel(); renderModes(); renderBillingManagers(); renderTable(); }
+function renderAll() { applyRole(); renderKpis(); renderCharts(); renderFunnel(); renderModes(); renderBillingManagers(); renderTable(); checkAndShoot61to90Alerts(); }
 
 /* ============================================================
    KPI cards

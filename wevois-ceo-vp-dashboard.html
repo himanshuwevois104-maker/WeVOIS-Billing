@@ -515,7 +515,47 @@ async function loadData(){
 const siteById = id => sites.find(s=>s.id===id);
 
 /* ---- render ---- */
-function renderAll(){ renderKpis(); renderAgeing(); renderRegions(); renderBillingManagers(); renderOverdue(); renderRequests(); }
+function renderAll(){
+  renderKpis(); renderAgeing(); renderRegions(); renderBillingManagers(); renderOverdue(); renderRequests();
+  checkAndShoot61to90Alerts();
+}
+
+// Automatic Email Alert Trigger for 3rd Stage (61-90 days billing cycle) to VP & CEO
+function checkAndShoot61to90Alerts() {
+  const sentAlerts = JSON.parse(localStorage.getItem('alerts_sent_61_90') || '{}');
+  const unpaid = unpaidBills();
+  const leadershipRecipients = getLeadershipEmails(); // Mr. Amit Bhateja (Amit@wevois.com), Abhishek Gupta (Abhishek@wevois.com)
+
+  unpaid.forEach(b => {
+    const d = daysOutstanding(b);
+    if (d != null && d >= 61 && d <= 90) {
+      const site = siteById(b.site_id);
+      const alertKey = `${b.site_id}_${b.month_key}`;
+      if (!sentAlerts[alertKey]) {
+        sentAlerts[alertKey] = new Date().toISOString();
+        localStorage.setItem('alerts_sent_61_90', JSON.stringify(sentAlerts));
+
+        const siteName = site?.name || 'Site';
+        const mLabel = monthLabel(b.month_key);
+        const netAmt = rupees(netOf(b));
+
+        sendEmail(
+          leadershipRecipients,
+          `🔴 ULTRA ALERT: Bill 61–90 Days Overdue — ${siteName} (${mLabel})`,
+          `ALERT TO LEADERSHIP (VP & CEO):\n\nThe bill for ${siteName} (${mLabel}) has reached Stage 3 (61–90 Days Overdue Billing Cycle).\n\nSite: ${siteName} (${site?.region || 'Rajasthan'})\nMonth: ${mLabel}\nDays Outstanding: ${d} days\nNet Outstanding: ${netAmt}\nCurrent Stage: ${b.status}\n\nSender: ${emailConfig.senderEmail}\nRecipients: ${leadershipRecipients.join(', ')}`
+        );
+
+        addNotification(
+          '🔴 61–90 Days Stage Escalation',
+          `Bill for ${siteName} (${mLabel}) has reached 61–90 days overdue (${d} days). Information email sent to VP & CEO.`,
+          'stage_updated',
+          'leadership',
+          b.site_id
+        );
+      }
+    }
+  });
+}
 
 function renderBillingManagers() {
   const container = document.getElementById('bmCards');
