@@ -1123,24 +1123,30 @@ document.getElementById('saveEmailConfigBtn')?.addEventListener('click', () => {
   document.getElementById('emailModal').classList.remove('open');
 });
 
-document.getElementById('sendTestEmailBtn')?.addEventListener('click', async () => {
+async function handleSendTestEmail() {
   const to = document.getElementById('testEmailTo').value.trim();
   if (!to) { toast('Enter test recipient email'); return; }
   const btn = document.getElementById('sendTestEmailBtn');
-  btn.textContent = 'Sending…'; btn.disabled = true;
+  if (btn) { btn.textContent = 'Sending…'; btn.disabled = true; }
   try {
-    await sendEmail(
-      to,
-      '🧪 Test Email from WeVois Billing System',
-      `This is a test notification from WeVois Billing System.\n\nSender Email: ${emailConfig.senderEmail}\nTimestamp: ${new Date().toLocaleString()}`
-    );
-    toast('✅ Test email sent from ' + emailConfig.senderEmail + ' to ' + to);
+    const subject = '🧪 Test Email from WeVois Billing System';
+    const bodyText = `This is a test notification from WeVois Billing System.\n\nSender Email: ${emailConfig.senderEmail}\nTimestamp: ${new Date().toLocaleString()}`;
+    
+    await sendEmail(to, subject, bodyText);
+
+    // Trigger direct mailto compose window for instant local mail composition
+    const mailtoUrl = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyText)}`;
+    window.open(mailtoUrl, '_blank');
+
+    toast('✅ Test email dispatched to ' + to);
   } catch(e) {
     toast('Test email failed: ' + e.message);
   } finally {
-    btn.textContent = 'Send Test'; btn.disabled = false;
+    if (btn) { btn.textContent = 'Send Test'; btn.disabled = false; }
   }
-});
+}
+
+document.getElementById('sendTestEmailBtn')?.addEventListener('click', handleSendTestEmail);
 
 // auto-resume session
 (async ()=>{
@@ -1188,8 +1194,8 @@ document.getElementById('sendTestEmailBtn')?.addEventListener('click', async () 
     <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:14px">
       <strong style="font-size:12px">🧪 Send Test Email</strong>
       <div style="display:flex;gap:8px;margin-top:6px">
-        <input type="email" id="testEmailTo" placeholder="Enter recipient email" value="vp@wevois.com" style="flex:1;font-family:inherit;font-size:12px;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface)">
-        <button class="btn primary" id="sendTestEmailBtn" style="font-size:12px;padding:7px 12px">Send Test</button>
+        <input type="email" id="testEmailTo" placeholder="Enter recipient email" value="himanshu.wevois104@gmail.com" style="flex:1;font-family:inherit;font-size:12px;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface)">
+        <button type="button" class="btn primary" id="sendTestEmailBtn" onclick="handleSendTestEmail()" style="font-size:12px;padding:7px 12px;cursor:pointer">Send Test</button>
       </div>
     </div>
 
