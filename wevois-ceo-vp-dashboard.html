@@ -374,12 +374,42 @@ function bucketOf(days){ return DEBT_BUCKETS.find(x=>days>=x.min&&days<=x.max)||
 function flagKey(sid,mk){ return sid+'|'+mk; }
 let toastT; function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),2800); }
 
-const FALLBACK_SITES = [];
+const FALLBACK_SITES = [
+  { id: 101, name: 'Ajmer', region: 'Rajasthan' },
+  { id: 102, name: 'Jaipur', region: 'Rajasthan' },
+  { id: 103, name: 'Dausa', region: 'Rajasthan' },
+  { id: 104, name: 'Jhunjhunu', region: 'Rajasthan' },
+  { id: 105, name: 'Chirawa', region: 'Rajasthan' },
+  { id: 106, name: 'Hisar', region: 'Haryana' },
+  { id: 107, name: 'Rajsamand', region: 'Rajasthan' },
+  { id: 108, name: 'Itarsi', region: 'Madhya Pradesh' },
+  { id: 109, name: 'Vidisha', region: 'Madhya Pradesh' },
+  { id: 110, name: 'Bharatpur', region: 'Rajasthan' },
+  { id: 111, name: 'Reengus', region: 'Rajasthan' },
+  { id: 112, name: 'Khandela', region: 'Rajasthan' },
+  { id: 113, name: 'Ratangarh', region: 'Rajasthan' },
+  { id: 114, name: 'Sikar', region: 'Rajasthan' },
+  { id: 115, name: 'Bundi', region: 'Rajasthan' },
+  { id: 116, name: 'Losal', region: 'Rajasthan' }
+];
 
 const FALLBACK_PROFILES = [
-  { id: 'admin-wevois-id', full_name: 'WeVois Billing Admin', email: 'Wevoisbilling@gmail.com', role: 'admin' },
-  { id: 'vp-amit-id', full_name: 'Mr. Amit Bhateja (VP)', email: 'Amit@wevois.com', role: 'leadership' },
-  { id: 'ceo-abhishek-id', full_name: 'Abhishek Gupta (CEO)', email: 'Abhishek@wevois.com', role: 'leadership' }
+  { id: 'admin-wevois-id', full_name: 'WeVois Billing Admin', email: 'Wevoisbilling@gmail.com', role: 'admin', employee_id: 'ADMIN001', mobile_no: '9999999999', status: 'active' },
+  { id: 'vp-amit-id', full_name: 'Mr. Amit Bhateja (VP)', email: 'Amit@wevois.com', role: 'leadership', employee_id: 'EXEC001', mobile_no: '9888888888', status: 'active' },
+  { id: 'ceo-abhishek-id', full_name: 'Abhishek Gupta (CEO)', email: 'Abhishek@wevois.com', role: 'leadership', employee_id: 'EXEC002', mobile_no: '9777777777', status: 'active' },
+  { id: 'bm-nirmal-saini', full_name: 'Nirmal Saini', email: 'nirmal.saini@wevois.com', role: 'billing_manager', employee_id: 'BM101', mobile_no: '9829000001', status: 'active' },
+  { id: 'bm-anand-tyagi', full_name: 'Anand Tyagi', email: 'anandtyagiwevois@gmail.com', role: 'billing_manager', employee_id: 'JAI318', mobile_no: '8562020758', status: 'active' },
+  { id: 'crm-deependra', full_name: 'Deependra Singh Nathawat', email: 'deependras.wevois@gmail.com', role: 'site_manager', employee_id: 'JAI758', mobile_no: '9549540843', status: 'active' },
+  { id: 'crm-vijendra', full_name: 'Vijendra Singh', email: 'vijendrasingh.wevois@gmail.com', role: 'site_manager', employee_id: 'JAI759', mobile_no: '9958014403', status: 'active' },
+  { id: 'crm-ghanshyam', full_name: 'Ghanshyam Sharma', email: 'Jj9746618@gmail.com', role: 'site_manager', employee_id: 'JAI774', mobile_no: '9461025421', status: 'active' },
+  { id: 'crm-rohit', full_name: 'Rohit Kumar', email: 'rohitkumar.wevois@gmail.com', role: 'site_manager', employee_id: 'JAI964', mobile_no: '9259102539', status: 'active' },
+  { id: 'crm-deepak', full_name: 'Deepak Kaushik', email: 'deepak1.wevois@gmail.com', role: 'site_manager', employee_id: 'JAI751', mobile_no: '9996266051', status: 'active' },
+  { id: 'crm-suraj', full_name: 'Suraj Yadav', email: 'Suraj.wevois92@gmail.com', role: 'site_manager', employee_id: 'JAI1060', mobile_no: '9718974903', status: 'active' },
+  { id: 'crm-bhavesh', full_name: 'Bhavesh', email: 'bhaveshwevois@gmail.com', role: 'site_manager', employee_id: 'JAI1195', mobile_no: '9009909947', status: 'active' },
+  { id: 'crm-raju', full_name: 'Raju', email: 'rajuwevois@gmail.com', role: 'site_manager', employee_id: 'JAI893', mobile_no: '9261201721', status: 'active' },
+  { id: 'crm-govind', full_name: 'Govind', email: 'wevoisgovind@gmail.com', role: 'site_manager', employee_id: 'JAI800', mobile_no: '9785439563', status: 'active' },
+  { id: 'crm-praveen', full_name: 'Praveen', email: 'praveenwevois@gmail.com', role: 'site_manager', employee_id: 'SIK1945', mobile_no: '9983107032', status: 'active' },
+  { id: 'crm-raghvendra', full_name: 'Raghvendra Singh Sikarvar', email: 'raghavendra.wevois@gmail.com', role: 'site_manager', employee_id: 'JAI904', mobile_no: '9694068413', status: 'active' }
 ];
 
 function getLeadershipEmails() {
@@ -391,7 +421,25 @@ function getLeadershipEmails() {
   return [...new Set([...defaults, ...fromDb])];
 }
 
-const FALLBACK_ASSIGNMENTS = [];
+const FALLBACK_ASSIGNMENTS = [
+  { user_id: 'bm-nirmal-saini', site_id: 101 }, { user_id: 'bm-nirmal-saini', site_id: 102 },
+  { user_id: 'bm-nirmal-saini', site_id: 103 }, { user_id: 'bm-nirmal-saini', site_id: 104 },
+  { user_id: 'bm-nirmal-saini', site_id: 105 }, { user_id: 'bm-nirmal-saini', site_id: 106 },
+  { user_id: 'bm-nirmal-saini', site_id: 107 }, { user_id: 'bm-nirmal-saini', site_id: 108 },
+  { user_id: 'bm-nirmal-saini', site_id: 109 },
+  { user_id: 'bm-anand-tyagi', site_id: 110 }, { user_id: 'bm-anand-tyagi', site_id: 111 },
+  { user_id: 'bm-anand-tyagi', site_id: 112 }, { user_id: 'bm-anand-tyagi', site_id: 113 },
+  { user_id: 'bm-anand-tyagi', site_id: 114 }, { user_id: 'bm-anand-tyagi', site_id: 115 },
+  { user_id: 'bm-anand-tyagi', site_id: 116 },
+  { user_id: 'crm-deependra', site_id: 101 }, { user_id: 'crm-vijendra', site_id: 102 },
+  { user_id: 'crm-ghanshyam', site_id: 103 }, { user_id: 'crm-rohit', site_id: 104 },
+  { user_id: 'crm-rohit', site_id: 105 }, { user_id: 'crm-deepak', site_id: 106 },
+  { user_id: 'crm-suraj', site_id: 107 }, { user_id: 'crm-bhavesh', site_id: 108 },
+  { user_id: 'crm-bhavesh', site_id: 109 }, { user_id: 'crm-raju', site_id: 110 },
+  { user_id: 'crm-govind', site_id: 111 }, { user_id: 'crm-govind', site_id: 112 },
+  { user_id: 'crm-govind', site_id: 113 }, { user_id: 'crm-praveen', site_id: 114 },
+  { user_id: 'crm-raghvendra', site_id: 115 }, { user_id: 'bm-anand-tyagi', site_id: 116 }
+];
 
 /* ---- auth ---- */
 async function doLogin(){

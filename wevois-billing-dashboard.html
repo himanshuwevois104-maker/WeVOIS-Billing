@@ -569,8 +569,10 @@
     </div>
 
     <div class="form-grid">
-      <div><label for="auName">Full name</label><input type="text" id="auName" placeholder="e.g. Ramesh Kumar"></div>
-      <div><label for="auEmail">Email (login ID)</label><input type="text" id="auEmail" placeholder="name@wevois.com"></div>
+      <div><label for="auName">Full name</label><input type="text" id="auName" placeholder="e.g. Deependra Singh Nathawat"></div>
+      <div><label for="auEmail">Email (login ID)</label><input type="text" id="auEmail" placeholder="e.g. deependras.wevois@gmail.com"></div>
+      <div><label for="auEmpId">Employee ID</label><input type="text" id="auEmpId" placeholder="e.g. JAI758"></div>
+      <div><label for="auMobile">Mobile No.</label><input type="text" id="auMobile" placeholder="e.g. 9549540843"></div>
       <div><label for="auPass">Temp password</label><input type="text" id="auPass" placeholder="min 6 characters"></div>
       <div><label for="auRole">Role</label><select id="auRole"></select></div>
       <div class="full" id="auSitesWrap">
@@ -828,17 +830,66 @@ async function loadData() {
     sb.from('site_assignments').select('*')
   ]);
   profiles = (profsData && profsData.length) ? profsData : [
-    { id: 'admin-wevois-id', full_name: 'WeVois Billing Admin', email: 'Wevoisbilling@gmail.com', role: 'admin' },
-    { id: 'vp-amit-id', full_name: 'Mr. Amit Bhateja (VP)', email: 'Amit@wevois.com', role: 'leadership' },
-    { id: 'ceo-abhishek-id', full_name: 'Abhishek Gupta (CEO)', email: 'Abhishek@wevois.com', role: 'leadership' }
+    { id: 'admin-wevois-id', full_name: 'WeVois Billing Admin', email: 'Wevoisbilling@gmail.com', role: 'admin', employee_id: 'ADMIN001', mobile_no: '9999999999', status: 'active' },
+    { id: 'vp-amit-id', full_name: 'Mr. Amit Bhateja (VP)', email: 'Amit@wevois.com', role: 'leadership', employee_id: 'EXEC001', mobile_no: '9888888888', status: 'active' },
+    { id: 'ceo-abhishek-id', full_name: 'Abhishek Gupta (CEO)', email: 'Abhishek@wevois.com', role: 'leadership', employee_id: 'EXEC002', mobile_no: '9777777777', status: 'active' },
+    { id: 'bm-nirmal-saini', full_name: 'Nirmal Saini', email: 'nirmal.saini@wevois.com', role: 'billing_manager', employee_id: 'BM101', mobile_no: '9829000001', status: 'active' },
+    { id: 'bm-anand-tyagi', full_name: 'Anand Tyagi', email: 'anandtyagiwevois@gmail.com', role: 'billing_manager', employee_id: 'JAI318', mobile_no: '8562020758', status: 'active' },
+    { id: 'crm-deependra', full_name: 'Deependra Singh Nathawat', email: 'deependras.wevois@gmail.com', role: 'site_manager', employee_id: 'JAI758', mobile_no: '9549540843', status: 'active' },
+    { id: 'crm-vijendra', full_name: 'Vijendra Singh', email: 'vijendrasingh.wevois@gmail.com', role: 'site_manager', employee_id: 'JAI759', mobile_no: '9958014403', status: 'active' },
+    { id: 'crm-ghanshyam', full_name: 'Ghanshyam Sharma', email: 'Jj9746618@gmail.com', role: 'site_manager', employee_id: 'JAI774', mobile_no: '9461025421', status: 'active' },
+    { id: 'crm-rohit', full_name: 'Rohit Kumar', email: 'rohitkumar.wevois@gmail.com', role: 'site_manager', employee_id: 'JAI964', mobile_no: '9259102539', status: 'active' },
+    { id: 'crm-deepak', full_name: 'Deepak Kaushik', email: 'deepak1.wevois@gmail.com', role: 'site_manager', employee_id: 'JAI751', mobile_no: '9996266051', status: 'active' },
+    { id: 'crm-suraj', full_name: 'Suraj Yadav', email: 'Suraj.wevois92@gmail.com', role: 'site_manager', employee_id: 'JAI1060', mobile_no: '9718974903', status: 'active' },
+    { id: 'crm-bhavesh', full_name: 'Bhavesh', email: 'bhaveshwevois@gmail.com', role: 'site_manager', employee_id: 'JAI1195', mobile_no: '9009909947', status: 'active' },
+    { id: 'crm-raju', full_name: 'Raju', email: 'rajuwevois@gmail.com', role: 'site_manager', employee_id: 'JAI893', mobile_no: '9261201721', status: 'active' },
+    { id: 'crm-govind', full_name: 'Govind', email: 'wevoisgovind@gmail.com', role: 'site_manager', employee_id: 'JAI800', mobile_no: '9785439563', status: 'active' },
+    { id: 'crm-praveen', full_name: 'Praveen', email: 'praveenwevois@gmail.com', role: 'site_manager', employee_id: 'SIK1945', mobile_no: '9983107032', status: 'active' },
+    { id: 'crm-raghvendra', full_name: 'Raghvendra Singh Sikarvar', email: 'raghavendra.wevois@gmail.com', role: 'site_manager', employee_id: 'JAI904', mobile_no: '9694068413', status: 'active' }
   ];
 
   if (!profiles.some(p => p && p.email && p.email.toLowerCase() === 'wevoisbilling@gmail.com')) {
-    profiles.unshift({ id: 'admin-wevois-id', full_name: 'WeVois Billing Admin', email: 'Wevoisbilling@gmail.com', role: 'admin' });
+    profiles.unshift({ id: 'admin-wevois-id', full_name: 'WeVois Billing Admin', email: 'Wevoisbilling@gmail.com', role: 'admin', employee_id: 'ADMIN001', mobile_no: '9999999999', status: 'active' });
   }
 
-  siteAssignments = (asgData && asgData.length) ? asgData : [];
-  const rawSites = (sitesData && sitesData.length) ? sitesData : [];
+  siteAssignments = (asgData && asgData.length) ? asgData : [
+    { user_id: 'bm-nirmal-saini', site_id: 101 }, { user_id: 'bm-nirmal-saini', site_id: 102 },
+    { user_id: 'bm-nirmal-saini', site_id: 103 }, { user_id: 'bm-nirmal-saini', site_id: 104 },
+    { user_id: 'bm-nirmal-saini', site_id: 105 }, { user_id: 'bm-nirmal-saini', site_id: 106 },
+    { user_id: 'bm-nirmal-saini', site_id: 107 }, { user_id: 'bm-nirmal-saini', site_id: 108 },
+    { user_id: 'bm-nirmal-saini', site_id: 109 },
+    { user_id: 'bm-anand-tyagi', site_id: 110 }, { user_id: 'bm-anand-tyagi', site_id: 111 },
+    { user_id: 'bm-anand-tyagi', site_id: 112 }, { user_id: 'bm-anand-tyagi', site_id: 113 },
+    { user_id: 'bm-anand-tyagi', site_id: 114 }, { user_id: 'bm-anand-tyagi', site_id: 115 },
+    { user_id: 'bm-anand-tyagi', site_id: 116 },
+    { user_id: 'crm-deependra', site_id: 101 }, { user_id: 'crm-vijendra', site_id: 102 },
+    { user_id: 'crm-ghanshyam', site_id: 103 }, { user_id: 'crm-rohit', site_id: 104 },
+    { user_id: 'crm-rohit', site_id: 105 }, { user_id: 'crm-deepak', site_id: 106 },
+    { user_id: 'crm-suraj', site_id: 107 }, { user_id: 'crm-bhavesh', site_id: 108 },
+    { user_id: 'crm-bhavesh', site_id: 109 }, { user_id: 'crm-raju', site_id: 110 },
+    { user_id: 'crm-govind', site_id: 111 }, { user_id: 'crm-govind', site_id: 112 },
+    { user_id: 'crm-govind', site_id: 113 }, { user_id: 'crm-praveen', site_id: 114 },
+    { user_id: 'crm-raghvendra', site_id: 115 }, { user_id: 'bm-anand-tyagi', site_id: 116 }
+  ];
+
+  const rawSites = (sitesData && sitesData.length) ? sitesData : [
+    { id: 101, name: 'Ajmer', region: 'Rajasthan', workflow_steps: null },
+    { id: 102, name: 'Jaipur', region: 'Rajasthan', workflow_steps: null },
+    { id: 103, name: 'Dausa', region: 'Rajasthan', workflow_steps: null },
+    { id: 104, name: 'Jhunjhunu', region: 'Rajasthan', workflow_steps: null },
+    { id: 105, name: 'Chirawa', region: 'Rajasthan', workflow_steps: null },
+    { id: 106, name: 'Hisar', region: 'Haryana', workflow_steps: null },
+    { id: 107, name: 'Rajsamand', region: 'Rajasthan', workflow_steps: null },
+    { id: 108, name: 'Itarsi', region: 'Madhya Pradesh', workflow_steps: null },
+    { id: 109, name: 'Vidisha', region: 'Madhya Pradesh', workflow_steps: null },
+    { id: 110, name: 'Bharatpur', region: 'Rajasthan', workflow_steps: null },
+    { id: 111, name: 'Reengus', region: 'Rajasthan', workflow_steps: null },
+    { id: 112, name: 'Khandela', region: 'Rajasthan', workflow_steps: null },
+    { id: 113, name: 'Ratangarh', region: 'Rajasthan', workflow_steps: null },
+    { id: 114, name: 'Sikar', region: 'Rajasthan', workflow_steps: null },
+    { id: 115, name: 'Bundi', region: 'Rajasthan', workflow_steps: null },
+    { id: 116, name: 'Losal', region: 'Rajasthan', workflow_steps: null }
+  ];
   const allSites = rawSites.map(s => ({
     id: s.id,
     name: s.name,
@@ -2343,17 +2394,21 @@ async function loadUsers() {
   if (profs && profs.length) profiles = profs;
 
   const tbl = document.getElementById('userTable');
-  tbl.innerHTML = `<thead><tr><th>Name</th><th>Email / Login ID</th><th>Role</th><th>Status</th><th>Sites</th><th>Actions</th></tr></thead><tbody>` +
+  tbl.innerHTML = `<thead><tr><th>Name</th><th>Emp ID</th><th>Mobile No</th><th>Email / Login ID</th><th>Role</th><th>Status</th><th>Sites</th><th>Actions</th></tr></thead><tbody>` +
     (profiles || []).map(p => {
       const ids = byUser[p.id] || [];
       const isAdmin = p.role === 'admin' || p.role === 'leadership';
       const displayName = p.full_name || p.email?.split('@')[0] || 'User';
       const displayEmail = p.email || '—';
+      const empId = p.employee_id || '—';
+      const mobile = p.mobile_no || '—';
       const isInactive = p.status === 'inactive';
       const isPrimaryAdmin = (p.email || '').toLowerCase() === 'wevoisbilling@gmail.com';
 
       return `<tr>
         <td><strong>${displayName}</strong></td>
+        <td><span class="note-chip" style="font-weight:700">${empId}</span></td>
+        <td><span class="site-region">${mobile}</span></td>
         <td class="site-region">${displayEmail}</td>
         <td><select data-uid="${p.id}" class="roleSel" style="min-width:140px"${isPrimaryAdmin ? ' disabled' : ''}>${roleOptionsHtml(p.role)}</select></td>
         <td>
@@ -2434,10 +2489,12 @@ async function saveUserSites() {
 }
 
 async function createUserAdmin() {
-  const email     = document.getElementById('auEmail').value.trim();
-  const password  = document.getElementById('auPass').value;
-  const full_name = document.getElementById('auName').value.trim();
-  const role      = document.getElementById('auRole').value;
+  const email       = document.getElementById('auEmail').value.trim();
+  const password    = document.getElementById('auPass').value;
+  const full_name   = document.getElementById('auName').value.trim();
+  const employee_id = document.getElementById('auEmpId')?.value.trim() || null;
+  const mobile_no   = document.getElementById('auMobile')?.value.trim() || null;
+  const role        = document.getElementById('auRole').value;
   if (!email || !password)   { toast('Enter email and password'); return; }
   if (password.length < 6)   { toast('Password must be 6+ characters'); return; }
   const siteIds = checkedSiteIds('auSites');
@@ -2447,16 +2504,16 @@ async function createUserAdmin() {
     const { data: signUpData, error: signUpErr } = await sb.auth.signUp({
       email,
       password,
-      options: { data: { full_name } }
+      options: { data: { full_name, employee_id, mobile_no } }
     });
     if (signUpErr) { toast('Create failed: ' + signUpErr.message); return; }
 
     const newUserId = signUpData?.user?.id;
     if (!newUserId) { toast('User created — confirm email in Supabase Auth dashboard'); loadUsers(); return; }
 
-    // Step 2: Update profile with correct role, full_name, email, and active status
+    // Step 2: Update profile with correct role, full_name, email, employee_id, mobile_no, and active status
     const { error: profileErr } = await sb.from('user_profiles')
-      .upsert({ id: newUserId, full_name: full_name || email.split('@')[0], email, role, status: 'active' })
+      .upsert({ id: newUserId, full_name: full_name || email.split('@')[0], email, role, employee_id, mobile_no, status: 'active' })
       .eq('id', newUserId);
     if (profileErr) { toast('User created but profile update failed: ' + profileErr.message); }
 
