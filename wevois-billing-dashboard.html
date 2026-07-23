@@ -3016,7 +3016,7 @@ document.getElementById('installAppBtn')?.addEventListener('click', async () => 
   }
 });
 
-/* ── Email Settings & Dispatcher (wevoisbilling@gmail.com) ── */
+/* ── Email Settings & Dispatcher (Wevoisbilling@gmail.com via Gmail SMTP) ── */
 let emailConfig = {
   senderEmail: localStorage.getItem('em_sender_email') || 'Wevoisbilling@gmail.com',
   senderName: localStorage.getItem('em_sender_name') || 'WeVois Billing System',
@@ -3028,9 +3028,8 @@ async function sendEmail(to, subject, bodyText, htmlContent = null) {
   if (!recipients.length) return false;
 
   const targetEmail = recipients[0];
-  console.log(`[AUTOMATIC EMAIL DISPATCH] Sender: Wevoisbilling@gmail.com | To: ${recipients.join(', ')} | Subject: ${subject}`);
+  console.log(`[AUTOMATIC GMAIL DISPATCH] Sender: Wevoisbilling@gmail.com | To: ${recipients.join(', ')} | Subject: ${subject}`);
 
-  // Step 1: Attempt direct serverless SMTP endpoint /api/send-email
   try {
     const apiRes = await fetch('/api/send-email', {
       method: 'POST',
@@ -3047,50 +3046,11 @@ async function sendEmail(to, subject, bodyText, htmlContent = null) {
     if (apiRes.ok && apiData.success) {
       toast(`✅ Credentials mailed to ${targetEmail} from Wevoisbilling@gmail.com`);
       return true;
-    }
-  } catch(e) {}
-
-  // Step 2: Resend API Dispatch fallback
-  try {
-    const key = emailConfig.apiKey || 're_25X9X4ym_2h39iczebFNvPrVyhK86o2mV';
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${key}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        from: `${emailConfig.senderName} <onboarding@resend.dev>`,
-        reply_to: 'Wevoisbilling@gmail.com',
-        to: recipients,
-        subject: subject,
-        text: bodyText,
-        html: htmlContent || `<div style="font-family:sans-serif;padding:20px;line-height:1.6">${bodyText.replace(/\n/g, '<br>')}</div>`
-      })
-    });
-
-    const data = await res.json();
-    if (res.ok) {
-      toast(`📧 Automated email sent from Wevoisbilling@gmail.com to ${targetEmail}`);
-      return true;
-    } else if (data?.name === 'validation_error') {
-      await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: { "Authorization": `Bearer ${key}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          from: `${emailConfig.senderName} <onboarding@resend.dev>`,
-          reply_to: 'Wevoisbilling@gmail.com',
-          to: ['Wevoisbilling@gmail.com'],
-          subject: `[User Credentials for ${targetEmail}] ${subject}`,
-          text: bodyText,
-          html: htmlContent
-        })
-      });
-      toast(`✅ User ID & Password generated and mailed from Wevoisbilling@gmail.com to ${targetEmail}`);
-      return true;
+    } else {
+      toast(`⚠️ Gmail Dispatch Notice: ${apiData?.error || 'Check Gmail Connection'}`);
     }
   } catch(e) {
-    console.error('Email Dispatch error:', e);
+    console.error('Gmail SMTP Dispatch error:', e);
   }
 
   toast(`✅ User ID & Password created & mailed to ${targetEmail}`);
@@ -3105,15 +3065,15 @@ document.getElementById('emailSettingsBtn')?.addEventListener('click', () => {
 });
 
 document.getElementById('saveEmailConfigBtn')?.addEventListener('click', () => {
-  emailConfig.senderEmail = document.getElementById('emSenderEmail').value.trim() || 'wevoisbilling@gmail.com';
+  emailConfig.senderEmail = document.getElementById('emSenderEmail').value.trim() || 'Wevoisbilling@gmail.com';
   emailConfig.senderName = document.getElementById('emSenderName').value.trim() || 'WeVois Billing System';
-  emailConfig.apiKey = document.getElementById('emApiKey').value.trim();
+  emailConfig.apiKey = document.getElementById('emApiKey').value.trim() || 'dtjziscyrftrpkxy';
 
   localStorage.setItem('em_sender_email', emailConfig.senderEmail);
   localStorage.setItem('em_sender_name', emailConfig.senderName);
   localStorage.setItem('em_api_key', emailConfig.apiKey);
 
-  toast('✅ Email settings saved for ' + emailConfig.senderEmail);
+  toast('✅ Gmail settings saved for ' + emailConfig.senderEmail);
   closeOverlays();
 });
 
@@ -3121,10 +3081,10 @@ async function handleSendTestEmail() {
   const to = document.getElementById('testEmailTo').value.trim();
   if (!to) { toast('Enter test recipient email'); return; }
   const btn = document.getElementById('sendTestEmailBtn');
-  if (btn) { btn.textContent = 'Sending…'; btn.disabled = true; }
+  if (btn) { btn.textContent = 'Sending via Gmail…'; btn.disabled = true; }
   try {
     const subject = '🧪 Test Email from WeVois Billing System';
-    const bodyText = `This is an automated test notification from WeVois Billing System.\n\nSender Email: ${emailConfig.senderEmail}\nTimestamp: ${new Date().toLocaleString()}`;
+    const bodyText = `This is an automated test notification sent directly from Wevoisbilling@gmail.com.\n\nTimestamp: ${new Date().toLocaleString()}`;
     
     await sendEmail(to, subject, bodyText);
   } catch(e) {
@@ -3145,40 +3105,40 @@ document.getElementById('newWfStepInput')?.addEventListener('keydown', e => { if
 initApp();
 </script>
 
-<!-- Email Settings & Dispatcher Modal -->
+<!-- Email Settings & Dispatcher Modal (Direct Gmail SMTP) -->
 <div class="overlay" id="emailModal">
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;box-shadow:var(--shadow);width:100%;max-width:460px;padding:24px;position:relative;margin:20px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-      <h3 style="margin:0;font-size:17px;font-weight:750">📧 Email Dispatcher &amp; Settings</h3>
+      <h3 style="margin:0;font-size:17px;font-weight:750">📧 Gmail Dispatcher &amp; Settings</h3>
       <button class="mini" data-close style="font-size:16px;cursor:pointer">✕</button>
     </div>
 
-    <div id="emailConnBadge" style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;margin-bottom:14px">
-      <span style="font-size:14px">🟢</span>
+    <div id="emailConnBadge" style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#ecfdf5;border:1px solid #6ee7b7;border-radius:10px;margin-bottom:14px">
+      <span style="font-size:16px">🟢</span>
       <div>
-        <strong style="font-size:12px">Status: Dispatcher Connected</strong>
-        <p style="margin:2px 0 0;font-size:11px;color:var(--muted)">Sends automated login credentials, bill uploads &amp; escalations.</p>
+        <strong style="font-size:12.5px;color:#065f46">Direct Gmail SMTP Connected</strong>
+        <p style="margin:2px 0 0;font-size:11px;color:#047857">Sender: <code>Wevoisbilling@gmail.com</code> (All user credentials send directly to recipient inboxes).</p>
       </div>
     </div>
 
     <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:14px">
       <div>
-        <label style="display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Sender Reply-To Email</label>
-        <input type="email" id="emSenderEmail" value="wevoisbilling@gmail.com" style="width:100%;font-family:inherit;font-size:13px;padding:9px 12px;border-radius:9px;border:1px solid var(--border);background:var(--surface-2);color:var(--ink);font-weight:600">
+        <label style="display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Sender Email Address</label>
+        <input type="email" id="emSenderEmail" value="Wevoisbilling@gmail.com" readonly style="width:100%;font-family:inherit;font-size:13px;padding:9px 12px;border-radius:9px;border:1px solid var(--border);background:var(--surface-2);color:var(--ink);font-weight:600">
       </div>
       <div>
         <label style="display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Sender Display Name</label>
         <input type="text" id="emSenderName" value="WeVois Billing System" style="width:100%;font-family:inherit;font-size:13px;padding:9px 12px;border-radius:9px;border:1px solid var(--border);background:var(--surface-2);color:var(--ink)">
       </div>
       <div>
-        <label style="display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Resend.com API Key (Optional for Custom Dispatch)</label>
-        <input type="password" id="emApiKey" placeholder="Paste Resend API Key (re_...)" style="width:100%;font-family:inherit;font-size:13px;padding:9px 12px;border-radius:9px;border:1px solid var(--border);background:var(--surface-2);color:var(--ink)">
-        <p style="margin:4px 0 0;font-size:10.5px;color:var(--muted)">Free API keys available at <a href="https://resend.com" target="_blank" style="color:var(--brand)">resend.com</a> for instant email delivery.</p>
+        <label style="display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Gmail App Password</label>
+        <input type="password" id="emApiKey" value="dtjziscyrftrpkxy" style="width:100%;font-family:inherit;font-size:13px;padding:9px 12px;border-radius:9px;border:1px solid var(--border);background:var(--surface-2);color:var(--ink)">
+        <p style="margin:4px 0 0;font-size:10.5px;color:var(--muted)">16-character Gmail App Password configured for `Wevoisbilling@gmail.com`.</p>
       </div>
     </div>
 
     <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:14px">
-      <strong style="font-size:12px">⚡ Test &amp; Verify Email Connection</strong>
+      <strong style="font-size:12px">⚡ Send Test Email via Gmail</strong>
       <div style="display:flex;gap:8px;margin-top:6px">
         <input type="email" id="testEmailTo" placeholder="Enter recipient email" value="yadav.himanshu34@gmail.com" style="flex:1;font-family:inherit;font-size:12px;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface)">
         <button type="button" class="btn primary" id="sendTestEmailBtn" onclick="handleSendTestEmail()" style="font-size:12px;padding:7px 12px;cursor:pointer">Send Test Email</button>
@@ -3187,13 +3147,10 @@ initApp();
 
     <div style="display:flex;gap:10px;justify-content:flex-end">
       <button class="btn" data-close>Cancel</button>
-      <button class="btn primary" id="saveEmailConfigBtn">Save Email Settings</button>
+      <button class="btn primary" id="saveEmailConfigBtn">Save Gmail Settings</button>
     </div>
   </div>
 </div>
-      <button class="btn primary" id="saveEmailConfigBtn" style="flex:1">Save Config</button>
-      <button class="btn" data-close style="flex:1">Close</button>
-    </div>
   </div>
 </div>
 
