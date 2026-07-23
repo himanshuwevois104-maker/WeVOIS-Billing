@@ -774,6 +774,19 @@ function transformBill(b) {
   };
 }
 
+function getLeadershipEmails() {
+  const defaults = ['Amit@wevois.com', 'Abhishek@wevois.com'];
+  try {
+    const fromDb = (profiles || [])
+      .filter(p => p && (p.role === 'leadership' || p.role === 'admin' || (p.email && p.email.toLowerCase().includes('wevois'))))
+      .map(p => p.email)
+      .filter(Boolean);
+    return [...new Set([...defaults, ...fromDb])];
+  } catch(e) {
+    return defaults;
+  }
+}
+
 /* ---- Load all data from Supabase ---- */
 async function loadData() {
   const keys = MONTHS.map(m => m.key);
@@ -827,17 +840,8 @@ async function loadData() {
     { id: 'ceo-abhishek-id', full_name: 'Abhishek Gupta (CEO)', email: 'Abhishek@wevois.com', role: 'leadership' },
     { id: '93b68ca1-7320-4617-a731-6709fc600420', full_name: 'Anand Tyagi', email: 'anandtyagiwevois@gmail.com', role: 'billing_manager' },
     { id: '02746f16-be4e-4c31-9936-9a1770d0f13d', full_name: 'Kanchan Kumar', email: 'kanchan@123', role: 'site_manager' },
-    { id: '0a03a555-9f13-4d6a-bfe1-848cd760039c', full_name: 'Himanshu Yadav', email: 'yadav.himanshu34@gmail.com', role: 'site_manager' }
   ];
 
-function getLeadershipEmails() {
-  const defaults = ['Amit@wevois.com', 'Abhishek@wevois.com'];
-  const fromDb = (profiles || [])
-    .filter(p => p.role === 'leadership' || p.role === 'admin' || (p.email && p.email.toLowerCase().includes('wevois')))
-    .map(p => p.email)
-    .filter(Boolean);
-  return [...new Set([...defaults, ...fromDb])];
-}
   siteAssignments = (asgData && asgData.length) ? asgData : [
     { user_id: '93b68ca1-7320-4617-a731-6709fc600420', site_id: 1 },
     { user_id: '93b68ca1-7320-4617-a731-6709fc600420', site_id: 2 },
