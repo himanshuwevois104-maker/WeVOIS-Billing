@@ -32,7 +32,7 @@ function body(site: string, month: string, days: number, b: ReturnType<typeof bu
 
 async function sendEmail(to: string[], subject: string, text: string) {
   const key = Deno.env.get("RESEND_API_KEY");
-  const from = Deno.env.get("FROM_EMAIL") || "billing@wevois.com";
+  const from = Deno.env.get("FROM_EMAIL") || "wevoisbilling@gmail.com";
   if (!key) { console.log("[dry-run] would email", to, subject); return; }
   await fetch("https://api.resend.com/emails", {
     method: "POST",
