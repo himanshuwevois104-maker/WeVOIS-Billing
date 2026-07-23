@@ -1,0 +1,20 @@
+{
+  "appId": "com.wevois.billingcrm",
+  "appName": "WeVois Billing CRM",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "server": {
+    "url": "https://wevoisbilling.vercel.app/wevois-billing-executive-app.html",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true,
+    "permissions": [
+      "android.permission.CAMERA",
+      "android.permission.READ_EXTERNAL_STORAGE",
+      "android.permission.WRITE_EXTERNAL_STORAGE",
+      "android.permission.READ_MEDIA_IMAGES"
+    ]
+  }
+}
