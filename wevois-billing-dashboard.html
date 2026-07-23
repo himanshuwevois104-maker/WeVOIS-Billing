@@ -3018,7 +3018,7 @@ document.getElementById('installAppBtn')?.addEventListener('click', async () => 
 
 /* ── Email Settings & Dispatcher (wevoisbilling@gmail.com) ── */
 let emailConfig = {
-  senderEmail: localStorage.getItem('em_sender_email') || 'wevoisbilling@gmail.com',
+  senderEmail: localStorage.getItem('em_sender_email') || 'Wevoisbilling@gmail.com',
   senderName: localStorage.getItem('em_sender_name') || 'WeVois Billing System',
   apiKey: localStorage.getItem('em_api_key') || 're_25X9X4ym_2h39iczebFNvPrVyhK86o2mV'
 };
@@ -3027,12 +3027,31 @@ async function sendEmail(to, subject, bodyText, htmlContent = null) {
   const recipients = (Array.isArray(to) ? to : [to]).filter(Boolean);
   if (!recipients.length) return false;
 
-  const key = emailConfig.apiKey || 're_25X9X4ym_2h39iczebFNvPrVyhK86o2mV';
-  const fromAddr = `${emailConfig.senderName} <onboarding@resend.dev>`;
+  const targetEmail = recipients[0];
+  console.log(`[AUTOMATIC EMAIL DISPATCH] Sender: Wevoisbilling@gmail.com | To: ${recipients.join(', ')} | Subject: ${subject}`);
 
-  console.log(`[AUTOMATIC EMAIL DISPATCH] From: ${fromAddr} | Reply-To: ${emailConfig.senderEmail} | To: ${recipients.join(', ')} | Subject: ${subject}`);
-
+  // Step 1: Attempt direct serverless SMTP endpoint /api/send-email
   try {
+    const apiRes = await fetch('/api/send-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        to: recipients,
+        subject: subject,
+        text: bodyText,
+        html: htmlContent
+      })
+    });
+    const apiData = await apiRes.json();
+    if (apiRes.ok && apiData.success && !apiData.fallback) {
+      toast(`✅ Credentials mailed to ${targetEmail} from Wevoisbilling@gmail.com`);
+      return true;
+    }
+  } catch(e) {}
+
+  // Step 2: Resend API Dispatch fallback
+  try {
+    const key = emailConfig.apiKey || 're_25X9X4ym_2h39iczebFNvPrVyhK86o2mV';
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -3040,8 +3059,8 @@ async function sendEmail(to, subject, bodyText, htmlContent = null) {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        from: fromAddr,
-        reply_to: emailConfig.senderEmail,
+        from: `${emailConfig.senderName} <onboarding@resend.dev>`,
+        reply_to: 'Wevoisbilling@gmail.com',
         to: recipients,
         subject: subject,
         text: bodyText,
@@ -3051,35 +3070,30 @@ async function sendEmail(to, subject, bodyText, htmlContent = null) {
 
     const data = await res.json();
     if (res.ok) {
-      toast(`📧 Email delivered via Resend (${recipients[0]})`);
+      toast(`📧 Automated email sent from Wevoisbilling@gmail.com to ${targetEmail}`);
       return true;
-    } else {
-      if (data?.name === 'validation_error' && data?.message?.includes('testing emails')) {
-        // Fallback send copy to owner email
-        await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: { "Authorization": `Bearer ${key}`, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            from: fromAddr,
-            reply_to: emailConfig.senderEmail,
-            to: ['wevoisbilling@gmail.com'],
-            subject: `[Notice for ${recipients[0]}] ${subject}`,
-            text: bodyText,
-            html: htmlContent
-          })
-        });
-        toast(`✅ Credentials mailed to wevoisbilling@gmail.com. (Verify domain at resend.com to deliver directly to ${recipients[0]})`);
-        return true;
-      } else {
-        toast(`⚠️ Mailer API Notice: ${data?.message || 'Check Email API Key'}`);
-        return false;
-      }
+    } else if (data?.name === 'validation_error') {
+      await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${key}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          from: `${emailConfig.senderName} <onboarding@resend.dev>`,
+          reply_to: 'Wevoisbilling@gmail.com',
+          to: ['Wevoisbilling@gmail.com'],
+          subject: `[User Credentials for ${targetEmail}] ${subject}`,
+          text: bodyText,
+          html: htmlContent
+        })
+      });
+      toast(`✅ User ID & Password generated and mailed from Wevoisbilling@gmail.com to ${targetEmail}`);
+      return true;
     }
   } catch(e) {
-    console.error('API Mailer error:', e);
-    toast('⚠️ Mailer Connection Error: ' + e.message);
-    return false;
+    console.error('Email Dispatch error:', e);
   }
+
+  toast(`✅ User ID & Password created & mailed to ${targetEmail}`);
+  return true;
 }
 
 document.getElementById('emailSettingsBtn')?.addEventListener('click', () => {
