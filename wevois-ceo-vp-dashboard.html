@@ -3,6 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0f7a4f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.json">
 <title>WeVois • CEO / VP Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="supabase-config.js"></script>
@@ -205,6 +209,7 @@
         <div id="notifList" style="max-height:280px;overflow-y:auto;display:flex;flex-direction:column;gap:8px"></div>
       </div>
     </div>
+    <button class="btn" id="installAppBtn" title="Install Mobile App on Android / iOS">📲 Install Mobile App</button>
     <span class="badge-user" id="userBadge"></span>
     <button class="btn" id="themeBtn" title="Toggle theme">◐</button>
     <button class="btn" id="exportBtn">⬇ Export report</button>
@@ -992,6 +997,26 @@ document.addEventListener('click', e => {
 document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click', ()=>document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('open'))));
 document.addEventListener('keydown', e=>{ if(e.key==='Escape') document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('open')); });
 
+/* ── PWA Install Prompt ── */
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  const btn = document.getElementById('installAppBtn');
+  if (btn) btn.innerHTML = '📲 Install App (Ready)';
+});
+
+document.getElementById('installAppBtn')?.addEventListener('click', async () => {
+  if (deferredInstallPrompt) {
+    deferredInstallPrompt.prompt();
+    const { outcome } = await deferredInstallPrompt.userChoice;
+    if (outcome === 'accepted') toast('📲 App installation started!');
+    deferredInstallPrompt = null;
+  } else {
+    document.getElementById('installModal').classList.add('open');
+  }
+});
+
 // auto-resume session
 (async ()=>{
   const { data:{ session } } = await sb.auth.getSession();
@@ -1007,5 +1032,30 @@ document.addEventListener('keydown', e=>{ if(e.key==='Escape') document.querySel
   }
 })();
 </script>
+
+<!-- Install App Guidance Modal -->
+<div class="overlay" id="installModal">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;box-shadow:var(--shadow);width:100%;max-width:420px;padding:24px;position:relative;margin:20px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <h3 style="margin:0;font-size:17px;font-weight:750">📲 Install WeVois Mobile App</h3>
+      <button class="mini" data-close style="font-size:16px;cursor:pointer">✕</button>
+    </div>
+    <p style="font-size:13px;color:var(--ink-2);margin-bottom:14px;line-height:1.4">
+      Install the WeVois CRM App on your mobile device for instant access, camera document scanning, and offline support.
+    </p>
+    <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:14px;font-size:12.5px;line-height:1.5">
+      <strong style="color:var(--brand)">Android (Chrome):</strong><br>
+      1. Tap the browser menu (<b>⋮</b>) in top right.<br>
+      2. Select <b>"Add to Home screen"</b> or <b>"Install app"</b>.<br><br>
+      <strong style="color:var(--brand)">iPhone / iPad (Safari):</strong><br>
+      1. Tap the <b>Share button (⬆)</b> at bottom.<br>
+      2. Scroll down and tap <b>"Add to Home Screen"</b>.
+    </div>
+    <div style="display:flex;gap:10px">
+      <a href="/wevois-billing-executive-app.html" class="btn primary" style="flex:1;text-align:center;text-decoration:none;display:inline-block;padding:11px">Open Mobile App →</a>
+      <button class="btn" data-close style="flex:1">Close</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>

@@ -315,6 +315,7 @@
         <div id="notifList" style="max-height:240px;overflow-y:auto;display:flex;flex-direction:column;gap:6px"></div>
       </div>
     </div>
+    <button class="logout-btn" id="installAppBtn" title="Install App">📲 Install App</button>
     <button class="logout-btn" id="logoutBtn" style="display:none">Sign out</button>
     <button class="icon-btn" id="themeBtn" title="Toggle light / dark">🌙</button>
   </div>
@@ -1245,8 +1246,47 @@ document.getElementById('loginBtn').addEventListener('click',doLogin);
 document.getElementById('loginPass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSheets();});
 
+/* ── PWA Install Prompt ── */
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  const btn = document.getElementById('installAppBtn');
+  if (btn) btn.innerHTML = '📲 Install (Ready)';
+});
+
+document.getElementById('installAppBtn')?.addEventListener('click', async () => {
+  if (deferredInstallPrompt) {
+    deferredInstallPrompt.prompt();
+    const { outcome } = await deferredInstallPrompt.userChoice;
+    if (outcome === 'accepted') toast('📲 App installation started!');
+    deferredInstallPrompt = null;
+  } else {
+    document.getElementById('ovl').classList.add('open');
+    document.getElementById('installModal').classList.add('open');
+  }
+});
+
 /* ── Boot ── */
 initApp();
 </script>
+
+<!-- Install App Guidance Modal -->
+<div class="sheet" id="installModal" style="z-index:260">
+  <div class="grab"></div>
+  <h3>📲 Install WeVois Mobile App</h3>
+  <p class="sub">Instant access, camera document scanning &amp; offline support</p>
+  <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:12px;margin:12px 0;font-size:12.5px;line-height:1.5">
+    <strong style="color:var(--brand)">Android (Chrome):</strong><br>
+    1. Tap the browser menu (<b>⋮</b>) in top right.<br>
+    2. Select <b>"Add to Home screen"</b> or <b>"Install app"</b>.<br><br>
+    <strong style="color:var(--brand)">iPhone / iPad (Safari):</strong><br>
+    1. Tap the <b>Share button (⬆)</b> at bottom.<br>
+    2. Scroll down and tap <b>"Add to Home Screen"</b>.
+  </div>
+  <div class="sheet-actions">
+    <button class="btn primary" onclick="closeSheets()">Got it!</button>
+  </div>
+</div>
 </body>
 </html>
