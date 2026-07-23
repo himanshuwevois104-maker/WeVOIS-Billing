@@ -418,6 +418,10 @@ async function doLogin(){
       }
     }
     const prof = await getProfile(authUser.id, email);
+    if (prof && prof.status === 'inactive') {
+      err.textContent = '⛔ Login Failed: Your account ID is currently INACTIVE. Please contact System Administrator.';
+      err.style.display = 'block'; await sb.auth.signOut(); return;
+    }
     const role = (prof?.role || '').toLowerCase();
     const eLower = email.toLowerCase();
     const isLeadership = role === 'leadership' || role === 'admin' || eLower.includes('vp') || eLower.includes('ceo') || eLower.includes('admin');

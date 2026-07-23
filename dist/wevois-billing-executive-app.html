@@ -659,6 +659,12 @@ async function doLogin() {
     }
 
     const profile = await getProfile(authUser.id, email);
+    if (profile && profile.status === 'inactive') {
+      errEl.textContent = '⛔ Login Failed: Your account ID is currently INACTIVE. Please contact System Administrator.';
+      errEl.style.display = 'block';
+      try { await sb.auth.signOut(); } catch(e){}
+      return;
+    }
     currentUser = { id: authUser.id, ...profile, email };
     document.getElementById('loadingScreen').classList.add('active');
     hideLoginScreen();

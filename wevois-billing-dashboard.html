@@ -964,6 +964,12 @@ async function doLogin() {
     }
 
     const profile = await getProfile(authUser.id, email);
+    if (profile && profile.status === 'inactive') {
+      errEl.textContent = '⛔ Login Failed: Your account ID is currently INACTIVE. Please contact System Administrator.';
+      errEl.style.display = 'block';
+      try { await sb.auth.signOut(); } catch(e){}
+      return;
+    }
     currentUser = { id: authUser.id, ...profile, email };
     document.getElementById('userBadgeName').textContent = `${profile?.full_name || email} (${currentUser?.role || 'user'})`;
     document.getElementById('loadingOverlay').classList.add('active');
@@ -2331,22 +2337,72 @@ async function loadUsers() {
   const byUser = {};
   (asg || []).forEach(a => { (byUser[a.user_id] ||= []).push(a.site_id); });
   window.__asgByUser = byUser;
+  if (profs && profs.length) profiles = profs;
+
   const tbl = document.getElementById('userTable');
-  tbl.innerHTML = `<thead><tr><th>Name</th><th>Email / login</th><th>Role</th><th>Sites</th></tr></thead><tbody>` +
-    (profs || []).map(p => {
+  tbl.innerHTML = `<thead><tr><th>Name</th><th>Email / Login ID</th><th>Role</th><th>Status</th><th>Sites</th><th>Actions</th></tr></thead><tbody>` +
+    (profiles || []).map(p => {
       const ids = byUser[p.id] || [];
       const isAdmin = p.role === 'admin' || p.role === 'leadership';
       const displayName = p.full_name || p.email?.split('@')[0] || 'User';
       const displayEmail = p.email || '—';
+      const isInactive = p.status === 'inactive';
+      const isPrimaryAdmin = (p.email || '').toLowerCase() === 'wevoisbilling@gmail.com';
+
       return `<tr>
         <td><strong>${displayName}</strong></td>
         <td class="site-region">${displayEmail}</td>
-        <td><select data-uid="${p.id}" class="roleSel" style="min-width:150px">${roleOptionsHtml(p.role)}</select></td>
+        <td><select data-uid="${p.id}" class="roleSel" style="min-width:140px"${isPrimaryAdmin ? ' disabled' : ''}>${roleOptionsHtml(p.role)}</select></td>
+        <td>
+          ${isInactive ?
+            `<span class="badge b-Hold" style="font-size:11px">🔴 Inactive</span>
+             ${!isPrimaryAdmin ? `<span class="note-chip" data-togglestatus="${p.id}" data-newstatus="active" style="margin-left:4px;color:var(--good);border-color:var(--good)">▶️ Activate</span>` : ''}` :
+            `<span class="badge b-Paid" style="font-size:11px">🟢 Active</span>
+             ${!isPrimaryAdmin ? `<span class="note-chip" data-togglestatus="${p.id}" data-newstatus="inactive" style="margin-left:4px;color:var(--warn);border-color:var(--warn)">⏸️ Deactivate</span>` : ''}`
+          }
+        </td>
         <td>${isAdmin ? '<span class="note-none">all sites (admin)</span>' : `${ids.length} site${ids.length===1?'':'s'} <span class="note-chip" data-editsites="${p.id}">✎ edit sites</span>`}</td>
+        <td>
+          ${!isPrimaryAdmin ? `<span class="note-chip" data-deluser="${p.id}" data-uemail="${displayEmail}" style="color:var(--bad);border-color:var(--bad)" title="Delete user login ID">🗑️ Delete</span>` : '<span class="note-none">Primary Admin</span>'}
+        </td>
       </tr>`;
     }).join('') + `</tbody>`;
+
   tbl.querySelectorAll('.roleSel').forEach(sel => sel.addEventListener('change', () => saveRole(sel.dataset.uid, sel.value)));
   tbl.querySelectorAll('[data-editsites]').forEach(c => c.addEventListener('click', () => editUserSites(c.dataset.editsites)));
+  tbl.querySelectorAll('[data-togglestatus]').forEach(c => c.addEventListener('click', () => toggleUserStatus(c.dataset.togglestatus, c.dataset.newstatus)));
+  tbl.querySelectorAll('[data-deluser]').forEach(c => c.addEventListener('click', () => deleteUserAdmin(c.dataset.deluser, c.dataset.uemail)));
+}
+
+async function toggleUserStatus(uid, newStatus) {
+  try {
+    const { error } = await sb.from('user_profiles').update({ status: newStatus }).eq('id', uid);
+    if (error) { toast('Status update failed: ' + error.message); return; }
+    
+    const prof = profiles.find(p => p.id === uid);
+    if (prof) prof.status = newStatus;
+    toast(`User account ${newStatus === 'active' ? '🟢 Activated' : '🔴 Deactivated'}`);
+    loadUsers();
+  } catch(e) {
+    toast('Status update failed: ' + e.message);
+  }
+}
+
+async function deleteUserAdmin(uid, email) {
+  if (!confirm(`⚠️ Are you sure you want to DELETE user login ID "${email}"?\n\nThis will remove the user account and site assignments.`)) {
+    return;
+  }
+  try {
+    const { error: err1 } = await sb.from('user_profiles').delete().eq('id', uid);
+    const { error: err2 } = await sb.from('site_assignments').delete().eq('user_id', uid);
+    if (err1) { toast('Delete failed: ' + err1.message); return; }
+    
+    profiles = profiles.filter(p => p.id !== uid);
+    toast(`🗑️ User login ID "${email}" deleted`);
+    loadUsers();
+  } catch(e) {
+    toast('Delete failed: ' + e.message);
+  }
 }
 
 async function saveRole(uid, role) {
@@ -2395,9 +2451,9 @@ async function createUserAdmin() {
     const newUserId = signUpData?.user?.id;
     if (!newUserId) { toast('User created — confirm email in Supabase Auth dashboard'); loadUsers(); return; }
 
-    // Step 2: Update profile with correct role, full_name, and email
+    // Step 2: Update profile with correct role, full_name, email, and active status
     const { error: profileErr } = await sb.from('user_profiles')
-      .upsert({ id: newUserId, full_name: full_name || email.split('@')[0], email, role })
+      .upsert({ id: newUserId, full_name: full_name || email.split('@')[0], email, role, status: 'active' })
       .eq('id', newUserId);
     if (profileErr) { toast('User created but profile update failed: ' + profileErr.message); }
 
