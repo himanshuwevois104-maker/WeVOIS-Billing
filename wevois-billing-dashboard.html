@@ -331,6 +331,7 @@
     </div>
     <button class="btn" id="installAppBtn" title="Install Mobile App on Android / iOS">📲 Install Mobile App</button>
     <button class="btn" id="emailSettingsBtn" title="Email Settings &amp; Sender Config">📧 Email Settings</button>
+    <button class="btn" id="activityLogsBtn" title="Audit Trail &amp; User Activity Logs">📜 Activity Logs</button>
     <button class="btn" id="cityReqBtn" style="display:none">🏙 Request city change</button>
     <button class="btn" id="adminBtn" style="display:none">⚙ Manage users</button>
     <button class="btn primary" id="addBtn">＋ Add / Update Bill</button>
@@ -573,7 +574,13 @@
       <div><label for="auEmail">Email (login ID)</label><input type="text" id="auEmail" placeholder="e.g. deependras.wevois@gmail.com"></div>
       <div><label for="auEmpId">Employee ID</label><input type="text" id="auEmpId" placeholder="e.g. JAI758"></div>
       <div><label for="auMobile">Mobile No.</label><input type="text" id="auMobile" placeholder="e.g. 9549540843"></div>
-      <div><label for="auPass">Temp password</label><input type="text" id="auPass" placeholder="min 6 characters"></div>
+      <div>
+        <label for="auPass" style="display:flex;justify-content:space-between;align-items:center">
+          <span>Random Password</span>
+          <button type="button" class="btn" id="auGenPass" style="font-size:10.5px;padding:1px 6px;margin:0;color:var(--brand)">🎲 Auto Generate</button>
+        </label>
+        <input type="text" id="auPass" placeholder="Click Auto Generate or type password">
+      </div>
       <div><label for="auRole">Role</label><select id="auRole"></select></div>
       <div class="full" id="auSitesWrap">
         <label>Assign sites <span class="hint" style="font-weight:500;text-transform:none;letter-spacing:0">— for Billing Managers &amp; CRMs</span></label>
@@ -581,7 +588,7 @@
       </div>
     </div>
     <div class="form-actions">
-      <button class="btn primary" id="auCreate">Create login</button>
+      <button class="btn primary" id="auCreate">Create login &amp; Mail Password</button>
     </div>
 
     <div id="siteEditor" style="display:none;margin-top:14px;border:1px solid var(--border);border-radius:12px;padding:14px;background:var(--surface-2)">
@@ -609,6 +616,36 @@
 
     <h2 style="font-size:14px;margin:26px 0 10px">City change requests <span class="hint" style="font-weight:500;text-transform:none;letter-spacing:0">— raised by VP / CEO</span></h2>
     <div id="cityReqList"></div>
+  </div>
+</div>
+
+<!-- User Activity Logs Overlay -->
+<div class="overlay" id="activityLogsOverlay">
+  <div class="modal wide" style="max-width:860px">
+    <div class="modal-head">
+      <div>
+        <h3>📜 User Activity Logs &amp; System Audit Trail</h3>
+        <p>Complete real-time log of account creations, deletions, status updates, and billing actions.</p>
+      </div>
+      <button class="close" data-close>×</button>
+    </div>
+
+    <div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+      <input type="text" id="alSearch" placeholder="🔍 Search logs by user, email, details or city…" style="flex:1;min-width:220px">
+      <select id="alFilter" style="width:190px">
+        <option value="all">All Actions</option>
+        <option value="user_created">👤 User Created</option>
+        <option value="user_deleted">🗑️ User Deleted</option>
+        <option value="status_changed">⏸️ Status Changed</option>
+        <option value="bill_saved">📄 Bill Added/Updated</option>
+        <option value="bill_cleared">💵 Bill Cleared</option>
+        <option value="city_action">🏙️ City Modified</option>
+      </select>
+    </div>
+
+    <div style="overflow-x:auto;max-height:420px;overflow-y:auto;border:1px solid var(--border);border-radius:10px">
+      <table class="mini-table" id="activityLogTable" style="margin:0"></table>
+    </div>
   </div>
 </div>
 
@@ -2322,6 +2359,12 @@ function initControls() {
 
   document.getElementById('addBtn').addEventListener('click', openForm);
   document.getElementById('adminBtn').addEventListener('click', openAdmin);
+  document.getElementById('activityLogsBtn')?.addEventListener('click', openActivityLogs);
+  document.getElementById('auGenPass')?.addEventListener('click', () => {
+    document.getElementById('auPass').value = generateRandomPassword();
+  });
+  document.getElementById('alSearch')?.addEventListener('input', renderActivityLogs);
+  document.getElementById('alFilter')?.addEventListener('change', renderActivityLogs);
   document.getElementById('auCreate').addEventListener('click', createUserAdmin);
   document.getElementById('auRole').addEventListener('change', e => {
     const scoped = ['billing_manager','site_manager'].includes(e.target.value);
@@ -2370,9 +2413,113 @@ function checkedSiteIds(containerId) {
   return [...document.querySelectorAll('#'+containerId+' input:checked')].map(i => +i.value);
 }
 
+function generateRandomPassword(length = 10) {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%';
+  let pass = '';
+  for (let i = 0; i < length; i++) {
+    pass += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return pass;
+}
+
+let activityLogs = [];
+
+async function logActivity(action, details, target = null) {
+  const entry = {
+    id: Date.now() + Math.random().toString(36).substr(2, 4),
+    action,
+    details,
+    target: target || '—',
+    performed_by_name: currentUser?.full_name || currentUser?.email?.split('@')[0] || 'System Admin',
+    performed_by_email: currentUser?.email || 'Wevoisbilling@gmail.com',
+    performed_by_role: currentUser?.role || 'admin',
+    created_at: new Date().toISOString()
+  };
+
+  try {
+    await sb.from('activity_logs').insert({
+      action: entry.action,
+      details: entry.details,
+      target: entry.target,
+      performed_by_name: entry.performed_by_name,
+      performed_by_email: entry.performed_by_email,
+      performed_by_role: entry.performed_by_role
+    });
+  } catch(e) {}
+
+  activityLogs.unshift(entry);
+  renderActivityLogs();
+}
+
+async function loadActivityLogs() {
+  try {
+    const { data } = await sb.from('activity_logs').select('*').order('created_at', { ascending: false });
+    if (data && data.length) {
+      activityLogs = data;
+    }
+  } catch(e) {}
+  renderActivityLogs();
+}
+
+function openActivityLogs() {
+  loadActivityLogs();
+  openOverlay('activityLogsOverlay');
+}
+
+function renderActivityLogs() {
+  const q = (document.getElementById('alSearch')?.value || '').toLowerCase().trim();
+  const cat = document.getElementById('alFilter')?.value || 'all';
+
+  const filtered = activityLogs.filter(l => {
+    if (cat !== 'all' && l.action !== cat) return false;
+    if (!q) return true;
+    const str = `${l.action} ${l.details} ${l.target} ${l.performed_by_name} ${l.performed_by_email}`.toLowerCase();
+    return str.includes(q);
+  });
+
+  const tbl = document.getElementById('activityLogTable');
+  if (!tbl) return;
+
+  if (!filtered.length) {
+    tbl.innerHTML = `<tbody><tr><td colspan="5" style="text-align:center;padding:24px;color:var(--muted)">No activity logs found matching your filter.</td></tr></tbody>`;
+    return;
+  }
+
+  tbl.innerHTML = `<thead>
+    <tr>
+      <th>Date &amp; Time</th>
+      <th>User</th>
+      <th>Action</th>
+      <th>Details</th>
+      <th>Target</th>
+    </tr>
+  </thead><tbody>` +
+  filtered.map(l => {
+    const dt = new Date(l.created_at || Date.now());
+    const dateStr = dt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) + ' ' + dt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+
+    let actionBadge = `<span class="badge b-Paid">${l.action}</span>`;
+    if (l.action === 'user_created') actionBadge = `<span class="badge b-Approved">👤 User Created</span>`;
+    else if (l.action === 'user_deleted') actionBadge = `<span class="badge b-Hold">🗑️ User Deleted</span>`;
+    else if (l.action === 'status_changed') actionBadge = `<span class="badge b-Hold">⏸️ Status Changed</span>`;
+    else if (l.action === 'bill_saved') actionBadge = `<span class="badge b-Paid">📄 Bill Saved</span>`;
+    else if (l.action === 'bill_cleared') actionBadge = `<span class="badge b-Paid">💵 Bill Cleared</span>`;
+    else if (l.action === 'city_action') actionBadge = `<span class="badge b-Approved">🏙️ City Action</span>`;
+
+    return `<tr>
+      <td style="font-size:11.5px;color:var(--muted);white-space:nowrap">${dateStr}</td>
+      <td><strong>${l.performed_by_name || 'System'}</strong> <div style="font-size:10.5px;color:var(--muted)">${l.performed_by_email || ''} (${l.performed_by_role || ''})</div></td>
+      <td>${actionBadge}</td>
+      <td style="font-size:12px">${l.details || '—'}</td>
+      <td style="font-size:11.5px;color:var(--brand);font-weight:600">${l.target || '—'}</td>
+    </tr>`;
+  }).join('') + `</tbody>`;
+}
+
 async function openAdmin() {
   document.getElementById('auRole').innerHTML = roleOptionsHtml('site_manager');
-  ['auName','auEmail','auPass'].forEach(id => document.getElementById(id).value = '');
+  ['auName','auEmail','auEmpId','auMobile'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('auPass').value = generateRandomPassword();
   document.getElementById('auSitesWrap').style.display = '';
   siteCheckboxes('auSites', []);
   document.getElementById('siteEditor').style.display = 'none';
@@ -2439,6 +2586,7 @@ async function toggleUserStatus(uid, newStatus) {
     
     const prof = profiles.find(p => p.id === uid);
     if (prof) prof.status = newStatus;
+    logActivity('status_changed', `Changed status of account ${prof?.email || uid} to ${newStatus}.`, prof?.email || uid);
     toast(`User account ${newStatus === 'active' ? '🟢 Activated' : '🔴 Deactivated'}`);
     loadUsers();
   } catch(e) {
@@ -2456,6 +2604,7 @@ async function deleteUserAdmin(uid, email) {
     if (err1) { toast('Delete failed: ' + err1.message); return; }
     
     profiles = profiles.filter(p => p.id !== uid);
+    logActivity('user_deleted', `Deleted user account ID ${email}.`, email);
     toast(`🗑️ User login ID "${email}" deleted`);
     loadUsers();
   } catch(e) {
@@ -2498,7 +2647,7 @@ async function createUserAdmin() {
   if (!email || !password)   { toast('Enter email and password'); return; }
   if (password.length < 6)   { toast('Password must be 6+ characters'); return; }
   const siteIds = checkedSiteIds('auSites');
-  const btn = document.getElementById('auCreate'); btn.textContent = 'Creating…'; btn.disabled = true;
+  const btn = document.getElementById('auCreate'); btn.textContent = 'Creating & Mailing Password…'; btn.disabled = true;
   try {
     // Step 1: Create the user via Supabase Auth signUp
     const { data: signUpData, error: signUpErr } = await sb.auth.signUp({
@@ -2523,27 +2672,58 @@ async function createUserAdmin() {
       await sb.from('site_assignments').insert(siteIds.map(site_id => ({ user_id: newUserId, site_id })));
     }
 
+    const passToShare = password;
     const assignedNames = sites.filter(s => siteIds.includes(s.id)).map(s => s.name).join(', ');
     const roleTxt = ROLE_META.find(r => r[0] === role)?.[1] || role;
+
+    logActivity('user_created', `Created ${roleTxt} account for ${full_name || email} (Emp ID: ${employee_id || '—'}) with password auto-mailed to user.`, email);
+
     addNotification(
-      '🔔 New User & Site Assigned',
-      `Admin created account for ${full_name || email} (${roleTxt})${assignedNames ? ' assigned to ' + assignedNames : ''}.`,
+      '🔔 New User Account Created',
+      `Admin created login account for ${full_name || email} (${roleTxt}) - Credentials dispatched via Email.`,
       'user_created',
       'leadership'
     );
 
+    const userHtml = `
+      <div style="font-family:Arial,sans-serif;max-width:580px;margin:0 auto;padding:24px;border:1px solid #cbd5e1;border-radius:12px;background:#ffffff">
+        <div style="background:#0f172a;padding:18px 24px;border-radius:10px 10px 0 0;color:#ffffff">
+          <h2 style="margin:0;font-size:18px;color:#ffffff">🔑 WeVOIS Billing Portal Credentials</h2>
+          <p style="margin:4px 0 0;font-size:12px;opacity:0.85">Your login ID and random password have been generated</p>
+        </div>
+        <div style="padding:22px 0;color:#334155;font-size:14px;line-height:1.6">
+          <p>Hello <strong>${full_name || email}</strong>,</p>
+          <p>Your official user login account has been created on the <strong>WeVOIS Municipal Billing System</strong>.</p>
+
+          <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:10px;padding:16px;margin:18px 0">
+            <p style="margin:0 0 8px">🌐 <strong>Portal Link:</strong> <a href="https://wevoisbilling.vercel.app/wevois-billing-dashboard.html" style="color:#2563eb;font-weight:bold">https://wevoisbilling.vercel.app</a></p>
+            <p style="margin:0 0 8px">👤 <strong>Login Email ID:</strong> <code>${email}</code></p>
+            <p style="margin:0 0 8px">🔑 <strong>Random Password:</strong> <code style="font-size:15px;background:#e2e8f0;padding:3px 8px;border-radius:4px;color:#0f172a;font-weight:bold">${passToShare}</code></p>
+            ${employee_id ? `<p style="margin:0 0 8px">🆔 <strong>Employee ID:</strong> <code>${employee_id}</code></p>` : ''}
+            ${mobile_no ? `<p style="margin:0 0 8px">📱 <strong>Mobile Number:</strong> <code>${mobile_no}</code></p>` : ''}
+            <p style="margin:0 0 8px">🛡️ <strong>Assigned Role:</strong> <code>${roleTxt}</code></p>
+            ${assignedNames ? `<p style="margin:0">📍 <strong>Assigned Cities:</strong> <code>${assignedNames}</code></p>` : ''}
+          </div>
+
+          <p style="color:#64748b;font-size:12px;margin-top:16px">⚠️ <i>This password was automatically generated. Please log in and keep your credentials confidential.</i></p>
+        </div>
+      </div>
+    `;
+
     sendEmail(
       [email, ...getLeadershipEmails()],
-      `🔔 WeVois Billing Account Created: ${full_name || email}`,
-      `Your WeVois Billing account has been created by Admin.\n\nName: ${full_name || email}\nRole: ${roleTxt}\nAssigned Sites: ${assignedNames || 'None'}\n\nLogin Portal: https://wevoisbilling.vercel.app/wevois-billing-dashboard.html\nSender: ${emailConfig.senderEmail}`
+      `🔑 WeVOIS Billing Account & Credentials: ${full_name || email}`,
+      `Hello ${full_name || email},\n\nYour WeVOIS Billing login credentials:\nURL: https://wevoisbilling.vercel.app\nLogin ID: ${email}\nPassword: ${passToShare}\nRole: ${roleTxt}\nEmployee ID: ${employee_id || 'N/A'}\n\nPlease keep your credentials safe.`,
+      userHtml
     );
 
-    toast('✅ User created & email sent — ' + email);
-    ['auName','auEmail','auPass'].forEach(id => document.getElementById(id).value = '');
+    toast('✅ Account created & password mailed to ' + email);
+    ['auName','auEmail','auEmpId','auMobile'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('auPass').value = generateRandomPassword();
     siteCheckboxes('auSites', []);
     loadUsers();
   } catch (e) { toast('Create failed: ' + e.message); }
-  finally { btn.textContent = 'Create login'; btn.disabled = false; }
+  finally { btn.textContent = 'Create login & Mail Password'; btn.disabled = false; }
 }
 
 /* ============================================================
