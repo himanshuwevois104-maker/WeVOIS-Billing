@@ -800,9 +800,9 @@ async function openNote(path, siteName, monthKey) {
   }
   if (data?.signedUrl) {
     url = data.signedUrl;
-  } else {
-    const { data: pubData } = sb.storage.from('notesheets').getPublicUrl(path);
-    url = pubData?.publicUrl;
+    if (!url.startsWith('http')) {
+      url = SUPABASE_URL + '/storage/v1' + (url.startsWith('/') ? '' : '/') + url;
+    }
   }
   if (!url) { toast('Could not load bill document: ' + (error?.message || 'File unavailable')); return; }
   const isPdf = path.toLowerCase().endsWith('.pdf') || url.toLowerCase().includes('.pdf');
