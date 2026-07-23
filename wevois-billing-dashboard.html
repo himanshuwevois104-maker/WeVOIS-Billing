@@ -3039,11 +3039,12 @@ async function sendEmail(to, subject, bodyText, htmlContent = null) {
         to: recipients,
         subject: subject,
         text: bodyText,
-        html: htmlContent
+        html: htmlContent,
+        pass: emailConfig.apiKey
       })
     });
     const apiData = await apiRes.json();
-    if (apiRes.ok && apiData.success && !apiData.fallback) {
+    if (apiRes.ok && apiData.success) {
       toast(`✅ Credentials mailed to ${targetEmail} from Wevoisbilling@gmail.com`);
       return true;
     }

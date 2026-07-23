@@ -16,19 +16,24 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const { to, subject, text, html } = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
+    const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
+    const { to, subject, text, html, pass: customPass } = body;
+
     if (!to || !subject) {
       return res.status(400).json({ error: 'Recipient email and subject required' });
     }
 
     const recipients = Array.isArray(to) ? to.join(', ') : to;
+    const gmailPass = customPass || process.env.GMAIL_PASS || 'WeVOISBilling@12345';
 
     // Transporter for Wevoisbilling@gmail.com
     const transporter = nodemailer.createTransport({
-      service: 'gmail',
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true,
       auth: {
         user: process.env.GMAIL_USER || 'Wevoisbilling@gmail.com',
-        pass: process.env.GMAIL_PASS || 'dhyv uqzw dhyv uqzw' // App password
+        pass: gmailPass.replace(/\s+/g, '') // remove spaces from 16-char app pass
       }
     });
 
@@ -41,10 +46,10 @@ module.exports = async (req, res) => {
     };
 
     const info = await transporter.sendMail(mailOptions);
-    console.log('Email sent:', info.messageId);
+    console.log('Email sent successfully:', info.messageId);
     return res.status(200).json({ success: true, messageId: info.messageId });
   } catch (error) {
     console.error('Mailer error:', error);
-    return res.status(200).json({ success: true, fallback: true, error: error.message });
+    return res.status(400).json({ success: false, error: error.message });
   }
 };
