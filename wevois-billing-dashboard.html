@@ -1164,9 +1164,16 @@ const DEBT_BUCKETS = [
   { key:'g2', min:61, max:90,       range:'61–90 days', color:'#92501b', label:'Ultra alert', mail:'Ultra-alert mail' },
   { key:'g3', min:91, max:Infinity, range:'90+ days',   color:'#dc2626', label:'Critical',    mail:'Daily 8 AM mail · reason required' }
 ];
-// outstanding age = days since the bill was raised (Submitted) until it is Paid
+/* ---- helper to check if bill is cleared / received in accounts ---- */
+function isBillCleared(status) {
+  if (!status) return false;
+  const s = String(status).toLowerCase();
+  return s.includes('paid') || s.includes('cleared') || s.includes('received') || s.includes('cash') || s.includes('settled') || s.includes('completed');
+}
+
+// outstanding age = days since the bill was raised (Submitted) until it is Paid / Cleared
 function debtorDays(rec) {
-  if (!rec || !rec.reported || rec.status === 'Paid') return null;
+  if (!rec || !rec.reported || isBillCleared(rec.status)) return null;
   const start = rec.dates?.Submitted ?? lastStageDate(rec);
   if (start == null) return null;
   return Math.max(0, Math.floor((Date.now() - start) / DAY));
@@ -1178,7 +1185,7 @@ function debtBucket(rec) {
 }
 function ageingCell(rec) {
   if (!rec || !rec.reported) return '<span class="note-none">—</span>';
-  if (rec.status === 'Paid') return '<span class="age gpaid" title="Settled">✓ settled</span>';
+  if (isBillCleared(rec.status)) return '<span class="age gpaid" title="Settled & Received in Accounts">✓ settled</span>';
   const b = debtBucket(rec), d = debtorDays(rec);
   if (!b) return '<span class="note-none">—</span>';
   return `<span class="age ${b.key}" title="${b.range} · ${b.mail}">${b.range} · ${d}d</span>`;
@@ -1192,7 +1199,7 @@ function checkAndShoot61to90Alerts() {
   sites.forEach(s => {
     MONTHS.forEach(m => {
       const rec = records[s.id]?.[m.key];
-      if (rec && rec.reported && rec.status !== 'Paid') {
+      if (rec && rec.reported && !isBillCleared(rec.status)) {
         const d = debtorDays(rec);
         if (d != null && d >= 61 && d <= 90) {
           const alertKey = `${s.id}_${m.key}`;
@@ -1228,8 +1235,8 @@ const state = { month: MONTHS[MONTHS.length-1].key, region:'all', siteId:'all', 
 
 function monthTotals(mKey, region, siteId) {
   let sub=0, pen=0, gst=0, tds=0, paid=0, totalCount=0, reportedCount=0, stuck=0;
-  const stageCount = { Submitted:0, Verified:0, Approved:0, Paid:0, 'On Hold':0 };
-  const stageAmt   = { Submitted:0, Verified:0, Approved:0, Paid:0, 'On Hold':0 };
+  const stageCount = { Submitted:0, Verified:0, Approved:0, Paid:0, 'Bill Cleared':0, 'Received in Accounts':0, 'On Hold':0 };
+  const stageAmt   = { Submitted:0, Verified:0, Approved:0, Paid:0, 'Bill Cleared':0, 'Received in Accounts':0, 'On Hold':0 };
   const modeCount  = { Treasury:0, Self:0, PFMS:0, Cheque:0 };
   const modeAmt    = { Treasury:0, Self:0, PFMS:0, Cheque:0 };
 
@@ -1241,15 +1248,15 @@ function monthTotals(mKey, region, siteId) {
     if (r && r.reported) {
       reportedCount++;
       sub += r.billed; pen += r.penalty; gst += r.gst; tds += r.tds;
-      if (r.status === 'Paid') paid += r.net;
+      if (isBillCleared(r.status)) paid += r.net;
       if (r.status && stageCount[r.status] != null) {
         stageCount[r.status]++; stageAmt[r.status] += r.net;
       }
-      if (r.status === 'Paid' && r.mode && modeCount[r.mode] != null) {
+      if (isBillCleared(r.status) && r.mode && modeCount[r.mode] != null) {
         modeCount[r.mode]++; modeAmt[r.mode] += r.net;
       }
       const age = ageDays(r);
-      if (r.status !== 'Paid' && age != null && age > 7) stuck++;
+      if (!isBillCleared(r.status) && age != null && age > 7) stuck++;
     }
   });
   return { sub, pen, gst, tds, net: sub - pen - gst - tds, paid, totalCount, reportedCount, stageCount, stageAmt, modeCount, modeAmt, stuck };

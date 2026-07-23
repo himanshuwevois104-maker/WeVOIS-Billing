@@ -740,9 +740,15 @@ function cycleDays(rec) {
   if(!rec||!rec.dates||rec.dates.Paid==null||rec.dates.Submitted==null)return null;
   return Math.max(0,Math.round((rec.dates.Paid-rec.dates.Submitted)/DAY));
 }
+function isBillCleared(status) {
+  if (!status) return false;
+  const s = String(status).toLowerCase();
+  return s.includes('paid') || s.includes('cleared') || s.includes('received') || s.includes('cash') || s.includes('settled') || s.includes('completed');
+}
+
 function ageChip(rec) {
   if(!rec||!rec.reported)return '';
-  if(rec.status==='Paid'){const c=cycleDays(rec);return `<span class="age done">${c!=null?c+'d cycle':'✓ paid'}</span>`;}
+  if(isBillCleared(rec.status)){const c=cycleDays(rec);return `<span class="age done">${c!=null?c+'d cycle':'✓ settled'}</span>`;}
   const a=ageDays(rec);if(a==null)return '';
   const cls=a>14?'bad':(a>7?'warn':'ok');
   return `<span class="age ${cls}">${a}d at stage</span>`;

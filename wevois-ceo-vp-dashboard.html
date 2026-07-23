@@ -746,7 +746,13 @@ function renderSiteSvgChart(containerId, months, billedArr, netArr) {
   container.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:100%">${bars}<line x1="${pl}" y1="${pt+ih}" x2="${W-pr}" y2="${pt+ih}" stroke="var(--axis)" stroke-width="1"/></svg>`;
 }
 
-function unpaidBills(){ return bills.filter(b=>b.status && b.status!=='Paid'); }
+function isBillCleared(status) {
+  if (!status) return false;
+  const s = String(status).toLowerCase();
+  return s.includes('paid') || s.includes('cleared') || s.includes('received') || s.includes('cash') || s.includes('settled') || s.includes('completed');
+}
+
+function unpaidBills(){ return bills.filter(b => b.status && !isBillCleared(b.status)); }
 
 function renderKpis(){
   let totalBilled = 0, totalReceived = 0, totalPendency = 0;
