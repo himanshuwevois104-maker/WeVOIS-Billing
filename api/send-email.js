@@ -24,16 +24,14 @@ module.exports = async (req, res) => {
     }
 
     const recipients = Array.isArray(to) ? to.join(', ') : to;
-    const gmailPass = customPass || process.env.GMAIL_PASS || 'WeVOISBilling@12345';
+    const gmailPass = (customPass || process.env.GMAIL_PASS || 'dtjziscyrftrpkxy').replace(/\s+/g, '');
 
     // Transporter for Wevoisbilling@gmail.com
     const transporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 465,
-      secure: true,
+      service: 'gmail',
       auth: {
         user: process.env.GMAIL_USER || 'Wevoisbilling@gmail.com',
-        pass: gmailPass.replace(/\s+/g, '') // remove spaces from 16-char app pass
+        pass: gmailPass
       }
     });
 
@@ -46,7 +44,7 @@ module.exports = async (req, res) => {
     };
 
     const info = await transporter.sendMail(mailOptions);
-    console.log('Email sent successfully:', info.messageId);
+    console.log('Email sent successfully from Wevoisbilling@gmail.com:', info.messageId);
     return res.status(200).json({ success: true, messageId: info.messageId });
   } catch (error) {
     console.error('Mailer error:', error);
