@@ -650,15 +650,9 @@ async function doLogin() {
       if (!upErr && upData?.user) {
         authUser = upData.user;
       } else {
-        // 3. Fail-safe demo session fallback
-        const prof = await getProfile(null, email);
-        if (prof || email.includes('wevois') || pass === 'admin123') {
-          authUser = { id: 'demo-id', email };
-        } else {
-          errEl.textContent = 'Sign-in failed: ' + (signErr?.message || upErr?.message || 'Invalid credentials');
-          errEl.style.display = 'block';
-          return;
-        }
+        errEl.textContent = 'Sign-in failed: ' + (signErr?.message || upErr?.message || 'Invalid credentials');
+        errEl.style.display = 'block';
+        return;
       }
     }
 
