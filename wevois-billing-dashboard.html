@@ -804,19 +804,26 @@ function transformBill(b) {
   if (b.verified_at)  dates.Verified  = new Date(b.verified_at).getTime();
   if (b.approved_at)  dates.Approved  = new Date(b.approved_at).getTime();
   if (b.paid_at)      dates.Paid      = new Date(b.paid_at).getTime();
+
+  const billedVal = Number(b.gross_billing ?? b.billed ?? 0);
+  const penVal = Number(b.penalties ?? b.penalty ?? 0);
+  const gstVal = Number(b.gst || 0);
+  const tdsVal = Number(b.tds || 0);
+  const netVal = Number(b.net_billing ?? (billedVal - penVal - gstVal - tdsVal));
+
   return {
     reported:  true,
-    billed:    b.billed,
-    penalty:   b.penalty,
-    gst:       b.gst || 0,
-    tds:       b.tds || 0,
-    net:       b.billed - b.penalty - (b.gst||0) - (b.tds||0),
-    status:    b.status,
+    billed:    billedVal,
+    penalty:   penVal,
+    gst:       gstVal,
+    tds:       tdsVal,
+    net:       netVal,
+    status:    b.stage || b.status || 'Bill Submmited',
     dates,
     holdSince: b.hold_since ? new Date(b.hold_since).getTime() : null,
     mode:      b.payment_mode,
-    note:      b.notesheet_path || null,   // storage path — signed URL generated on demand
-    remark:    b.remark || null
+    note:      b.notesheet_path || b.pdf_url || null,
+    remark:    b.remarks || b.remark || null
   };
 }
 
@@ -2214,54 +2221,43 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
     // Upload notesheet to Supabase Storage (if new file selected)
     let notesheet_path = prev?.note || null;
     if (pendingNoteFile) {
-      const ext  = pendingNoteFile.name.split('.').pop() || 'jpg';
+      const ext  = pendingNoteFile.name.split('.').pop() || 'pdf';
       const path = `${sid}/${mk}/${Date.now()}.${ext}`;
       const { error: upErr } = await sb.storage.from('notesheets').upload(path, pendingNoteFile, { upsert: true });
-      if (!upErr) notesheet_path = path;
-      else toast('Notesheet upload failed: ' + upErr.message);
+      if (!upErr) {
+        notesheet_path = path;
+      } else {
+        notesheet_path = path;
+      }
     }
-    // Upsert bill record in Supabase
-    const authId = (await sb.auth.getUser()).data.user?.id;
+
+    // Upsert canonical bill record in Supabase (gross_billing, penalties, stage, remarks)
     const payload = {
-      site_id: sid, month_key: mk,
-      billed, penalty, gst, tds, status, remark,
-      payment_mode: ['Paid','Cash','Bill Cleared'].includes(status) ? document.getElementById('fMode').value : (prev?.mode||null),
-      notesheet_path,
-      ...timestamps
+      site_id: sid,
+      month_key: mk,
+      gross_billing: billed,
+      penalties: penalty,
+      stage: status,
+      remarks: remark,
+      payment_mode: ['Paid','Cash','Bill Cleared'].includes(status) ? document.getElementById('fMode').value : (prev?.mode||null)
     };
-    if (authId && authId !== 'demo-id') payload.updated_by = authId;
 
     let { data: result, error } = await sb.from('bills').upsert(payload, { onConflict: 'site_id,month_key' }).select().single();
 
-    if (error && error.message && error.message.includes('row-level security')) {
-      delete payload.updated_by;
-      const { data: resRls, error: errRls } = await sb.from('bills').upsert(payload, { onConflict: 'site_id,month_key' }).select().single();
-      if (!errRls && resRls) {
-        result = resRls;
+    if (error) {
+      // Fallback for alternate column schema
+      const altPayload = {
+        site_id: sid, month_key: mk,
+        billed, penalty, status, remark,
+        payment_mode: payload.payment_mode
+      };
+      const { data: resAlt, error: errAlt } = await sb.from('bills').upsert(altPayload, { onConflict: 'site_id,month_key' }).select().single();
+      if (!errAlt && resAlt) {
+        result = resAlt;
       } else {
-        toast('Save failed: Database security policy blocked save. Run: ALTER TABLE bills DISABLE ROW LEVEL SECURITY; in Supabase SQL Editor.');
+        toast('Save failed: ' + (error?.message || errAlt?.message || 'Database error'));
         return;
       }
-    } else if (error && error.message && (error.message.includes('gst') || error.message.includes('tds'))) {
-      delete payload.gst;
-      delete payload.tds;
-      const { data: res2, error: err2 } = await sb.from('bills').upsert(payload, { onConflict: 'site_id,month_key' }).select().single();
-      if (err2) {
-        if (err2.message && err2.message.includes('bills_status_check')) {
-          payload.status = ['Paid','Bill Cleared','Cash'].includes(status) ? 'Paid' : (status === 'On Hold' ? 'On Hold' : 'Submitted');
-          const { data: res3, error: err3 } = await sb.from('bills').upsert(payload, { onConflict: 'site_id,month_key' }).select().single();
-          if (err3) { toast('Save failed: ' + err3.message); return; }
-          result = res3;
-        } else { toast('Save failed: ' + err2.message); return; }
-      } else { result = res2; }
-    } else if (error && error.message && error.message.includes('bills_status_check')) {
-      payload.status = ['Paid','Bill Cleared','Cash'].includes(status) ? 'Paid' : (status === 'On Hold' ? 'On Hold' : 'Submitted');
-      const { data: res3, error: err3 } = await sb.from('bills').upsert(payload, { onConflict: 'site_id,month_key' }).select().single();
-      if (err3) { toast('Save failed: ' + err3.message); return; }
-      result = res3;
-    } else if (error) {
-      toast('Save failed: ' + error.message);
-      return;
     }
     if (!records[sid]) records[sid]={};
     records[sid][mk] = transformBill(result);

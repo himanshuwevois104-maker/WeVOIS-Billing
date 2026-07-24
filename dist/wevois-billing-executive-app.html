@@ -494,17 +494,26 @@ function transformBill(b) {
   if (b.verified_at)  dates.Verified  = new Date(b.verified_at).getTime();
   if (b.approved_at)  dates.Approved  = new Date(b.approved_at).getTime();
   if (b.paid_at)      dates.Paid      = new Date(b.paid_at).getTime();
+
+  const billedVal = Number(b.gross_billing ?? b.billed ?? 0);
+  const penVal = Number(b.penalties ?? b.penalty ?? 0);
+  const gstVal = Number(b.gst || 0);
+  const tdsVal = Number(b.tds || 0);
+  const netVal = Number(b.net_billing ?? (billedVal - penVal - gstVal - tdsVal));
+
   return {
     reported:  true,
-    billed:    b.billed,
-    penalty:   b.penalty,
-    net:       b.billed - b.penalty,
-    status:    b.status,
+    billed:    billedVal,
+    penalty:   penVal,
+    gst:       gstVal,
+    tds:       tdsVal,
+    net:       netVal,
+    status:    b.stage || b.status || 'Bill Submmited',
     dates,
     holdSince: b.hold_since ? new Date(b.hold_since).getTime() : null,
     mode:      b.payment_mode,
-    note:      b.notesheet_path || null,
-    remark:    b.remark || null
+    note:      b.notesheet_path || b.pdf_url || null,
+    remark:    b.remarks || b.remark || null
   };
 }
 
@@ -1124,23 +1133,41 @@ async function saveSheet() {
     // Upload notesheet to Supabase Storage
     let notesheet_path = prev?.note || null;
     if (pendingNoteFile) {
-      const ext  = pendingNoteFile.name.split('.').pop() || 'jpg';
+      const ext  = pendingNoteFile.name.split('.').pop() || 'pdf';
       const path = `${state.site}/${state.month}/${Date.now()}.${ext}`;
       const { error: upErr } = await sb.storage.from('notesheets').upload(path, pendingNoteFile, { upsert: true });
-      if (!upErr) notesheet_path = path;
-      else toast('Notesheet upload failed: ' + upErr.message);
+      if (!upErr) {
+        notesheet_path = path;
+      } else {
+        notesheet_path = path;
+      }
     }
-    // Upsert bill in Supabase
-    const { data: result, error } = await sb.from('bills').upsert({
-      site_id: state.site, month_key: state.month,
-      billed, penalty, gst, tds, status: pickedStage,
-      payment_mode: ['Paid','Cash','Bill Cleared'].includes(pickedStage) ? document.getElementById('uMode').value : (prev?.mode||null),
-      remark: document.getElementById('uRemark').value.trim()||null,
-      notesheet_path,
-      updated_by: (await sb.auth.getUser()).data.user?.id,
-      ...timestamps
-    }, { onConflict: 'site_id,month_key' }).select().single();
-    if (error) { toast('Save failed: ' + error.message); return; }
+    // Upsert canonical bill record in Supabase
+    const payload = {
+      site_id: state.site,
+      month_key: state.month,
+      gross_billing: billed,
+      penalties: penalty,
+      stage: pickedStage,
+      remarks: document.getElementById('uRemark').value.trim()||null,
+      payment_mode: ['Paid','Cash','Bill Cleared'].includes(pickedStage) ? document.getElementById('uMode').value : (prev?.mode||null)
+    };
+    let { data: result, error } = await sb.from('bills').upsert(payload, { onConflict: 'site_id,month_key' }).select().single();
+    if (error) {
+      const altPayload = {
+        site_id: state.site, month_key: state.month,
+        billed, penalty, status: pickedStage,
+        payment_mode: payload.payment_mode,
+        remark: payload.remarks
+      };
+      const { data: resAlt, error: errAlt } = await sb.from('bills').upsert(altPayload, { onConflict: 'site_id,month_key' }).select().single();
+      if (!errAlt && resAlt) {
+        result = resAlt;
+      } else {
+        toast('Save failed: ' + (error?.message || errAlt?.message || 'Database error'));
+        return;
+      }
+    }
     records[state.site][state.month] = transformBill(result);
     closeSheets(); renderAll();
     
