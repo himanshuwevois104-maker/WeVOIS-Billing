@@ -504,6 +504,25 @@
         <input type="number" id="fBilled" min="0" step="1000" placeholder="e.g. 2450000">
       </div>
       <div>
+        <label for="fStatus">Approval stage</label>
+        <select id="fStatus">
+          <option>Submitted</option><option>Verified</option>
+          <option>Approved</option><option>Paid</option>
+          <option value="On Hold">On Hold</option>
+        </select>
+      </div>
+      <div class="full" id="noteWrap" style="background: rgba(37,99,235,0.06); padding: 12px; border: 1.5px dashed var(--brand); border-radius: 10px; margin: 4px 0 8px;">
+        <label for="fNote" style="font-weight:700; color:var(--brand); display:flex; align-items:center; gap:6px; font-size:13px;">
+          📎 Attach Signed Notesheet / Bill PDF Document
+        </label>
+        <input type="file" id="fNote" accept="image/*,application/pdf,.pdf" style="margin-top:6px; background:#fff; padding:6px; border-radius:6px; width:100%;">
+        <p class="hint" style="margin-top:4px; font-size:11px; color:var(--ink-2)">Upload a PDF or image copy of the monthly bill / signed notesheet.</p>
+        <div class="note-preview" id="notePreview" style="display:none;margin-top:8px">
+          <img id="notePreviewImg" alt="preview" style="max-width:100%;max-height:180px;display:none;border-radius:8px">
+          <div id="notePreviewPdf" style="display:none;padding:10px;background:#fff;border:1px dashed var(--brand);border-radius:8px;font-weight:600;font-size:13px;color:var(--brand)">📄 <span id="notePdfName">Monthly Bill PDF selected</span></div>
+        </div>
+      </div>
+      <div>
         <label for="fPenalty">Penalty deduction (₹)</label>
         <input type="number" id="fPenalty" min="0" step="1000" placeholder="e.g. 85000">
       </div>
@@ -514,14 +533,6 @@
       <div>
         <label for="fTds">TDS deduction (₹)</label>
         <input type="number" id="fTds" min="0" step="1000" placeholder="e.g. 24500">
-      </div>
-      <div>
-        <label for="fStatus">Approval stage</label>
-        <select id="fStatus">
-          <option>Submitted</option><option>Verified</option>
-          <option>Approved</option><option>Paid</option>
-          <option value="On Hold">On Hold</option>
-        </select>
       </div>
       <div>
         <label for="fDate">Date reached this stage</label>
@@ -542,15 +553,6 @@
       <div class="full" id="remarkWrap">
         <label for="fRemark">Remark (optional)</label>
         <input type="text" id="fRemark" placeholder="e.g. Sent to Accounts department / Approved by Executive Engineer">
-      </div>
-      <div class="full" id="noteWrap">
-        <label for="fNote">Signed notesheet photo / Bill Document (PDF or Image)</label>
-        <input type="file" id="fNote" accept="image/*,application/pdf,.pdf">
-        <p class="hint">Upload a PDF or image of the monthly bill / signed notesheet (optional at Bill Cleared stage).</p>
-        <div class="note-preview" id="notePreview" style="display:none;margin-top:8px">
-          <img id="notePreviewImg" alt="preview" style="max-width:100%;max-height:180px;display:none;border-radius:8px">
-          <div id="notePreviewPdf" style="display:none;padding:10px;background:var(--surface-2);border:1px dashed var(--brand);border-radius:8px;font-weight:600;font-size:13px;color:var(--brand)">📄 <span id="notePdfName">Monthly Bill PDF selected</span></div>
-        </div>
       </div>
     </div>
     <div class="form-actions">
