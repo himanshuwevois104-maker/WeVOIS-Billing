@@ -893,20 +893,7 @@ async function loadData() {
   const defaultProfiles = [
     { id: 'admin-wevois-id', full_name: 'WeVois Billing Admin', email: 'Wevoisbilling@gmail.com', role: 'admin', employee_id: 'ADMIN001', mobile_no: '9999999999', status: 'active' },
     { id: 'vp-amit-id', full_name: 'Mr. Amit Bhateja (VP)', email: 'Amit@wevois.com', role: 'leadership', employee_id: 'EXEC001', mobile_no: '9888888888', status: 'active' },
-    { id: 'ceo-abhishek-id', full_name: 'Abhishek Gupta (CEO)', email: 'Abhishek@wevois.com', role: 'leadership', employee_id: 'EXEC002', mobile_no: '9777777777', status: 'active' },
-    { id: 'bm-nirmal-saini', full_name: 'Nirmal Saini', email: 'nirmal.saini@wevois.com', role: 'billing_manager', employee_id: 'BM101', mobile_no: '9829000001', status: 'active' },
-    { id: 'bm-anand-tyagi', full_name: 'Anand Tyagi', email: 'anandtyagiwevois@gmail.com', role: 'billing_manager', employee_id: 'JAI318', mobile_no: '8562020758', status: 'active' },
-    { id: 'crm-deependra', full_name: 'Deependra Singh Nathawat', email: 'deependras.wevois@gmail.com', role: 'site_manager', employee_id: 'JAI758', mobile_no: '9549540843', status: 'active' },
-    { id: 'crm-vijendra', full_name: 'Vijendra Singh', email: 'vijendrasingh.wevois@gmail.com', role: 'site_manager', employee_id: 'JAI759', mobile_no: '9958014403', status: 'active' },
-    { id: 'crm-ghanshyam', full_name: 'Ghanshyam Sharma', email: 'Jj9746618@gmail.com', role: 'site_manager', employee_id: 'JAI774', mobile_no: '9461025421', status: 'active' },
-    { id: 'crm-rohit', full_name: 'Rohit Kumar', email: 'rohitkumar.wevois@gmail.com', role: 'site_manager', employee_id: 'JAI964', mobile_no: '9259102539', status: 'active' },
-    { id: 'crm-deepak', full_name: 'Deepak Kaushik', email: 'deepak1.wevois@gmail.com', role: 'site_manager', employee_id: 'JAI751', mobile_no: '9996266051', status: 'active' },
-    { id: 'crm-suraj', full_name: 'Suraj Yadav', email: 'Suraj.wevois92@gmail.com', role: 'site_manager', employee_id: 'JAI1060', mobile_no: '9718974903', status: 'active' },
-    { id: 'crm-bhavesh', full_name: 'Bhavesh', email: 'bhaveshwevois@gmail.com', role: 'site_manager', employee_id: 'JAI1195', mobile_no: '9009909947', status: 'active' },
-    { id: 'crm-raju', full_name: 'Raju', email: 'rajuwevois@gmail.com', role: 'site_manager', employee_id: 'JAI893', mobile_no: '9261201721', status: 'active' },
-    { id: 'crm-govind', full_name: 'Govind', email: 'wevoisgovind@gmail.com', role: 'site_manager', employee_id: 'JAI800', mobile_no: '9785439563', status: 'active' },
-    { id: 'crm-praveen', full_name: 'Praveen', email: 'praveenwevois@gmail.com', role: 'site_manager', employee_id: 'SIK1945', mobile_no: '9983107032', status: 'active' },
-    { id: 'crm-raghvendra', full_name: 'Raghvendra Singh Sikarvar', email: 'raghavendra.wevois@gmail.com', role: 'site_manager', employee_id: 'JAI904', mobile_no: '9694068413', status: 'active' }
+    { id: 'ceo-abhishek-id', full_name: 'Abhishek Gupta (CEO)', email: 'Abhishek@wevois.com', role: 'leadership', employee_id: 'EXEC002', mobile_no: '9777777777', status: 'active' }
   ];
 
   const mergedMap = new Map();
@@ -2574,15 +2561,13 @@ async function loadUsers() {
   window.__asgByUser = byUser;
 
   if (profs && profs.length) {
-    const profMap = new Map();
-    (profiles || []).forEach(p => { if (p && p.email) profMap.set(p.email.toLowerCase(), p); });
-    profs.forEach(p => {
-      if (p && p.email) {
-        const existing = profMap.get(p.email.toLowerCase()) || {};
-        profMap.set(p.email.toLowerCase(), { ...existing, ...p });
-      }
-    });
-    profiles = Array.from(profMap.values());
+    profiles = profs;
+  } else {
+    profiles = [
+      { id: 'admin-wevois-id', full_name: 'WeVois Billing Admin', email: 'Wevoisbilling@gmail.com', role: 'admin', employee_id: 'ADMIN001', mobile_no: '9999999999', status: 'active' },
+      { id: 'vp-amit-id', full_name: 'Mr. Amit Bhateja (VP)', email: 'Amit@wevois.com', role: 'leadership', employee_id: 'EXEC001', mobile_no: '9888888888', status: 'active' },
+      { id: 'ceo-abhishek-id', full_name: 'Abhishek Gupta (CEO)', email: 'Abhishek@wevois.com', role: 'leadership', employee_id: 'EXEC002', mobile_no: '9777777777', status: 'active' }
+    ];
   }
 
   const tbl = document.getElementById('userTable');
