@@ -1147,7 +1147,34 @@ function renderNotifications() {
   const list = document.getElementById('notifList');
   if (!badge || !list) return;
 
-  const unread = notifications.filter(n => !n.read).length;
+  const role = (currentUser?.role || '').toLowerCase();
+  const userEmail = (currentUser?.email || '').toLowerCase();
+
+  // Filter notifications relevant to current user:
+  // - Billing Manager: Do NOT show notifications from other Billing Managers or CRM updates
+  // - Site Manager: Show notifications intended for site_manager / assigned sites
+  // - Leadership / Admin: Show leadership and admin notifications
+  const userNotifs = notifications.filter(n => {
+    const rRole = (n.recipient_role || 'all').toLowerCase();
+    const createdByEmail = (n.created_by_email || '').toLowerCase();
+
+    if (role === 'billing_manager') {
+      // Do NOT show notifications sent when another Billing Manager uploads/updates a bill
+      if (rRole === 'site_manager' || rRole === 'leadership') return false;
+      if (createdByEmail && createdByEmail !== userEmail) return false;
+      return rRole === 'all' || rRole === 'billing' || rRole === 'billing_manager';
+    }
+    if (role === 'site_manager') {
+      if (rRole === 'leadership' || rRole === 'admin') return false;
+      return rRole === 'all' || rRole === 'site_manager' || rRole === 'crm';
+    }
+    if (role === 'leadership' || role === 'vp' || role === 'ceo') {
+      return rRole === 'all' || rRole === 'leadership' || rRole === 'vp' || rRole === 'ceo' || rRole === 'admin';
+    }
+    return true;
+  });
+
+  const unread = userNotifs.filter(n => !n.read).length;
   if (unread > 0) {
     badge.textContent = unread;
     badge.style.display = 'inline-block';
@@ -1155,12 +1182,12 @@ function renderNotifications() {
     badge.style.display = 'none';
   }
 
-  if (!notifications.length) {
+  if (!userNotifs.length) {
     list.innerHTML = `<div style="font-size:12px;color:var(--muted);text-align:center;padding:12px">No system notifications.</div>`;
     return;
   }
 
-  list.innerHTML = notifications.map(n => `
+  list.innerHTML = userNotifs.map(n => `
     <div style="padding:8px 10px;background:${n.read ? 'transparent' : 'var(--surface-2)'};border-radius:8px;border-left:3px solid var(--brand);font-size:12px">
       <div style="font-weight:750;margin-bottom:2px">${n.title}</div>
       <div style="color:var(--ink-2);line-height:1.35">${n.message}</div>
@@ -1171,9 +1198,11 @@ function renderNotifications() {
 
 async function addNotification(title, message, type, recipientRole = 'all', siteId = null) {
   try {
-    const { data } = await sb.from('notifications').insert({
+    const payload = {
       title, message, type, recipient_role: recipientRole, site_id: siteId
-    }).select().single();
+    };
+    if (currentUser?.email) payload.created_by_email = currentUser.email;
+    const { data } = await sb.from('notifications').insert(payload).select().single();
     if (data) {
       notifications.unshift(data);
       renderNotifications();
