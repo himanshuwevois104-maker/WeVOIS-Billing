@@ -1323,7 +1323,7 @@ function monthTotals(mKey, region, siteId) {
 
   sites.forEach(s => {
     if (region && region !== 'all' && s.region !== region) return;
-    if (siteId && siteId !== 'all' && s.id !== +siteId) return;
+    if (siteId && siteId !== 'all' && String(s.id) !== String(siteId)) return;
     totalCount++;
     const r = records[s.id]?.[mKey];
     if (r && r.reported) {
@@ -1431,7 +1431,7 @@ function renderBillingManagers() {
             const rec = records[s.id]?.[state.month];
             const curStatus = rec && rec.reported ? rec.status : 'Not started Yet';
             return `
-              <div onclick="openDrill(${s.id})" style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:.15s" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background='var(--surface)'">
+              <div onclick="openDrill('${s.id}')" style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:.15s" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background='var(--surface)'">
                 <div>
                   <strong style="font-size:13px;color:var(--brand)">📍 ${s.name}</strong>
                   <div style="font-size:11px;color:var(--muted)">${s.region || ''} · Status: ${curStatus}</div>
@@ -1760,21 +1760,21 @@ function renderTable() {
     tr.addEventListener('click', e => {
       if (e.target.closest('[data-editwf]')) {
         e.stopPropagation();
-        openWorkflowEditor(+e.target.closest('[data-editwf]').dataset.editwf);
+        openWorkflowEditor(e.target.closest('[data-editwf]').dataset.editwf);
         return;
       }
       if (e.target.closest('[data-editstatus]')) {
         e.stopPropagation();
-        openFormForSite(+e.target.closest('[data-editstatus]').dataset.editstatus);
+        openFormForSite(e.target.closest('[data-editstatus]').dataset.editstatus);
         return;
       }
       if (e.target.closest('.badge')) {
         e.stopPropagation();
-        openFormForSite(+tr.dataset.site);
+        openFormForSite(tr.dataset.site);
         return;
       }
-      if (e.target.closest('.note-chip')) { openNote(+e.target.closest('.note-chip').dataset.note); return; }
-      openDrill(+tr.dataset.site);
+      if (e.target.closest('.note-chip')) { openNote(e.target.closest('.note-chip').dataset.note); return; }
+      openDrill(tr.dataset.site);
     });
   });
 }
@@ -1799,13 +1799,11 @@ function openFormForSite(siteId) {
     if (delBtn && canWrite()) {
       delBtn.style.display = 'inline-flex';
       delBtn.onclick = () => handleDeleteBill(siteId, mk);
+    } else if (delBtn) {
+      delBtn.style.display = 'none';
     }
-  } else {
-    ['fBilled','fPenalty','fGst','fTds','fRemark'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.value = '';
-    });
-    if (delBtn) delBtn.style.display = 'none';
+  } else if (delBtn) {
+    delBtn.style.display = 'none';
   }
   syncModeField();
 }
@@ -1851,10 +1849,10 @@ async function handleDeleteBill(siteId, monthKey) {
    ============================================================ */
 async function openDrill(siteId) {
   drillSiteId = siteId;
-  const s = sites.find(x => x.id === siteId);
+  const s = sites.find(x => String(x.id) === String(siteId)) || { name: String(siteId), region: '' };
   const openFlag = flagMap[flagKey(siteId, state.month)];
   document.getElementById('drillTitle').textContent = s.name;
-  document.getElementById('drillSub').textContent   = s.region + ' · 12-month billing history'
+  document.getElementById('drillSub').textContent   = (s.region ? s.region + ' · ' : '') + '12-month billing history'
     + (openFlag ? '  ·  🚩 FLAGGED: ' + openFlag.note : '');
   const flagBtn = document.getElementById('flagBtn');
   if (flagBtn) flagBtn.style.display = canFlag() ? '' : 'none';
@@ -1903,18 +1901,18 @@ async function openDrill(siteId) {
     }).join('') + `</tbody>`;
 
   document.querySelectorAll('#drillTable [data-note2]').forEach(c => {
-    c.addEventListener('click', () => openNote(+c.dataset.note2, c.dataset.mk));
+    c.addEventListener('click', () => openNote(c.dataset.note2, c.dataset.mk));
   });
   document.querySelectorAll('#drillTable [data-drilledit]').forEach(c => {
     c.addEventListener('click', () => {
       state.month = c.dataset.mk;
       document.getElementById('monthSel').value = c.dataset.mk;
-      openFormForSite(+c.dataset.drilledit);
+      openFormForSite(c.dataset.drilledit);
     });
   });
   document.querySelectorAll('#drillTable [data-drilldel]').forEach(c => {
     c.addEventListener('click', () => {
-      handleDeleteBill(+c.dataset.drilldel, c.dataset.mk);
+      handleDeleteBill(c.dataset.drilldel, c.dataset.mk);
     });
   });
   openOverlay('drillOverlay');
