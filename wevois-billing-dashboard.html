@@ -1521,7 +1521,11 @@ function fmtDelta(d, flipGood) {
    Charts (SVG)
    ============================================================ */
 function renderCharts() {
-  const mList = MONTHS;
+  const curIdx = MONTHS.findIndex(m => m.key === state.month);
+  const endIdx = curIdx >= 0 ? curIdx : MONTHS.length - 1;
+  const startIdx = Math.max(0, endIdx - 11);
+  const mList = MONTHS.slice(startIdx, endIdx + 1);
+
   const bList = mList.map(m => monthTotals(m.key, state.region, state.siteId));
   const gross = bList.map(b => b.sub);
   const net   = bList.map(b => b.net);
@@ -1553,7 +1557,7 @@ function lineChart(elId, months, series) {
   const allV = series.flatMap(s => s.values);
   const maxV = niceMax(Math.max(...allV, 1) * 1.12);
 
-  const x = i => pl + (iw / (months.length - 1)) * i;
+  const x = i => pl + (iw / Math.max(1, months.length - 1)) * i;
   const y = v => pt + ih - (v / maxV) * ih;
 
   const gl = 4; let g = '';
@@ -1563,8 +1567,13 @@ function lineChart(elId, months, series) {
     g += `<text class="tick" x="${pl-8}" y="${yy+3}" text-anchor="end">${short(val).replace('₹','')}</text>`;
   }
 
+  const step = months.length > 14 ? Math.ceil(months.length / 10) : 1;
   let xl = '';
-  months.forEach((m, i) => { xl += `<text class="tick" x="${x(i)}" y="${H-12}" text-anchor="middle">${m.short}</text>`; });
+  months.forEach((m, i) => {
+    if (i % step === 0 || i === months.length - 1) {
+      xl += `<text class="tick" x="${x(i)}" y="${H-12}" text-anchor="middle">${m.short}</text>`;
+    }
+  });
 
   let paths = '';
   series.forEach(s => {
@@ -1619,11 +1628,14 @@ function barChart(elId, months, values, color) {
     g += `<line class="gridline" x1="${pl}" y1="${yy}" x2="${W-pr}" y2="${yy}"/>`;
     g += `<text class="tick" x="${pl-8}" y="${yy+3}" text-anchor="end">${short(val).replace('₹','')}</text>`;
   }
+  const step = months.length > 14 ? Math.ceil(months.length / 10) : 1;
   let bars='';
   values.forEach((v,i) => {
     const bh=(v/maxV)*ih, bx=pl+bw*i+bw*0.16, w=bw*0.68, by=pt+ih-bh;
     bars += `<rect x="${bx}" y="${by}" width="${w}" height="${Math.max(bh,1)}" rx="4" fill="${color}" data-i="${i}" class="barhit" style="cursor:pointer"/>`;
-    bars += `<text class="tick" x="${bx+w/2}" y="${H-12}" text-anchor="middle">${months[i].short}</text>`;
+    if (i % step === 0 || i === months.length - 1) {
+      bars += `<text class="tick" x="${bx+w/2}" y="${H-12}" text-anchor="middle">${months[i].short}</text>`;
+    }
   });
   document.getElementById(elId).innerHTML =
     `<svg viewBox="0 0 ${W} ${H}">${g}${bars}<line class="axis-line" x1="${pl}" y1="${pt+ih}" x2="${W-pr}" y2="${pt+ih}"/></svg>`;
