@@ -910,24 +910,7 @@ async function loadData() {
 
   siteAssignments = asgData || [];
 
-  const rawSites = (sitesData && sitesData.length) ? sitesData : [
-    { id: 101, name: 'Ajmer', region: 'Rajasthan', workflow_steps: null },
-    { id: 102, name: 'Jaipur', region: 'Rajasthan', workflow_steps: null },
-    { id: 103, name: 'Dausa', region: 'Rajasthan', workflow_steps: null },
-    { id: 104, name: 'Jhunjhunu', region: 'Rajasthan', workflow_steps: null },
-    { id: 105, name: 'Chirawa', region: 'Rajasthan', workflow_steps: null },
-    { id: 106, name: 'Hisar', region: 'Haryana', workflow_steps: null },
-    { id: 107, name: 'Rajsamand', region: 'Rajasthan', workflow_steps: null },
-    { id: 108, name: 'Itarsi', region: 'Madhya Pradesh', workflow_steps: null },
-    { id: 109, name: 'Vidisha', region: 'Madhya Pradesh', workflow_steps: null },
-    { id: 110, name: 'Bharatpur', region: 'Rajasthan', workflow_steps: null },
-    { id: 111, name: 'Reengus', region: 'Rajasthan', workflow_steps: null },
-    { id: 112, name: 'Khandela', region: 'Rajasthan', workflow_steps: null },
-    { id: 113, name: 'Ratangarh', region: 'Rajasthan', workflow_steps: null },
-    { id: 114, name: 'Sikar', region: 'Rajasthan', workflow_steps: null },
-    { id: 115, name: 'Bundi', region: 'Rajasthan', workflow_steps: null },
-    { id: 116, name: 'Losal', region: 'Rajasthan', workflow_steps: null }
-  ];
+  const rawSites = sitesData || [];
   const allSites = rawSites.map(s => ({
     id: s.id,
     name: s.name,
