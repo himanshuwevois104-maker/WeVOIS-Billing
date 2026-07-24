@@ -2862,7 +2862,9 @@ async function addCity() {
   const name   = document.getElementById('ncName').value.trim();
   const region = document.getElementById('ncRegion').value.trim();
   if (!name || !region) { toast('Enter city name and region'); return; }
-  const { error } = await sb.from('sites').insert({ name, region });
+
+  const siteId = name.toLowerCase().replace(/[^a-z0-9]/g, '-') || ('site-' + Date.now());
+  const { error } = await sb.from('sites').insert({ id: siteId, name, region });
   if (error) { toast('Add failed: ' + error.message); return; }
   document.getElementById('ncName').value = ''; document.getElementById('ncRegion').value = '';
   toast('City added — ' + name);
@@ -2877,8 +2879,8 @@ function loadCities() {
       <td><input type="text" value="${(s.region||'').replace(/"/g,'&quot;')}" data-id="${s.id}" class="cRegion" style="min-width:140px"></td>
       <td><span class="note-chip" data-savecity="${s.id}">✎ save</span> &nbsp; <span class="note-chip" data-delcity="${s.id}" style="color:var(--bad)">🗑 delete</span></td>
     </tr>`).join('') + `</tbody>`;
-  tbl.querySelectorAll('[data-savecity]').forEach(b => b.addEventListener('click', () => saveCity(+b.dataset.savecity)));
-  tbl.querySelectorAll('[data-delcity]').forEach(b => b.addEventListener('click', () => deleteCity(+b.dataset.delcity)));
+  tbl.querySelectorAll('[data-savecity]').forEach(b => b.addEventListener('click', () => saveCity(b.dataset.savecity)));
+  tbl.querySelectorAll('[data-delcity]').forEach(b => b.addEventListener('click', () => deleteCity(b.dataset.delcity)));
 }
 
 async function saveCity(id) {
