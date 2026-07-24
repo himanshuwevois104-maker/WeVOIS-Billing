@@ -463,7 +463,8 @@
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 function buildMonths() {
   const now=new Date(); const arr=[];
-  for (let i=11;i>=0;i--) {
+  // Cover 24 past months + current + 2 future months (handles year changes & multiple billing cycles)
+  for (let i=23;i>=-2;i--) {
     const d=new Date(now.getFullYear(),now.getMonth()-i,1);
     arr.push({
       key:   `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,

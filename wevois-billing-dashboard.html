@@ -734,7 +734,8 @@
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 function buildMonths() {
   const now = new Date(); const arr = [];
-  for (let i = 11; i >= 0; i--) {
+  // Cover 24 past months + current + 2 future months (handles year changes)
+  for (let i = 23; i >= -2; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     arr.push({
       key:   `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,
@@ -762,7 +763,8 @@ const DEFAULT_WORKFLOW_STEPS = [
 ];
 function getSiteSteps(site) {
   if (typeof site === 'number' || typeof site === 'string') {
-    site = sites.find(s => s.id === +site);
+    // Match by string ID (string IDs like 'bharatpur') or numeric ID
+    site = sites.find(s => String(s.id) === String(site)) || sites.find(s => s.id === site);
   }
   if (site && Array.isArray(site.workflow_steps) && site.workflow_steps.length > 0) {
     return site.workflow_steps;
@@ -2055,7 +2057,8 @@ function updateSiteDropdown() {
 
 function fillFormSelectors() {
   document.getElementById('fSite').innerHTML  = sites.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
-  document.getElementById('fMonth').innerHTML = MONTHS.slice().reverse().map(m => `<option value="${m.key}">${m.label}</option>`).join('');
+  // Show newest month first; MONTHS array is oldest→newest, reverse for dropdown
+  document.getElementById('fMonth').innerHTML = [...MONTHS].reverse().map(m => `<option value="${m.key}">${m.label}</option>`).join('');
   document.getElementById('fSite').addEventListener('change', updateFormStatusOptions);
 
   const regions = [...new Set(sites.map(s => s.region))];
@@ -2113,7 +2116,7 @@ function openForm() {
   const today=new Date();
   document.getElementById('fDate').value = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
 
-  const sid = +document.getElementById('fSite').value;
+  const sid = document.getElementById('fSite').value;
   const mk  = document.getElementById('fMonth').value;
   const prev = records[sid]?.[mk];
   if (prev && document.getElementById('fRemark')) {
@@ -2167,7 +2170,7 @@ function openForm() {
 }
 
 document.getElementById('saveBtn').addEventListener('click', async () => {
-  const sid    = +document.getElementById('fSite').value;
+  const sid    = document.getElementById('fSite').value;  // string ID e.g. 'bharatpur'
   const mk     = document.getElementById('fMonth').value;
   const billed = +document.getElementById('fBilled').value  || 0;
   const prev   = records[sid]?.[mk];
