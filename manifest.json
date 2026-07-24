@@ -1,7 +1,7 @@
 {
-  "name": "WeVois Billing CRM App",
-  "short_name": "WeVois CRM",
-  "description": "Client Relationship Manager mobile app for WeVois billing status, stage advancement, and deductions tracking.",
+  "name": "WeVOIS Billing",
+  "short_name": "WeVOIS Billing",
+  "description": "Mobile and desktop application for WeVOIS billing status, stage advancement, and deductions tracking.",
   "start_url": "/wevois-billing-executive-app.html",
   "display": "standalone",
   "background_color": "#0a0a0a",

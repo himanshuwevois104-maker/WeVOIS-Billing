@@ -1,6 +1,6 @@
 {
   "appId": "com.wevois.billingcrm",
-  "appName": "WeVois Billing CRM",
+  "appName": "WeVOIS Billing",
   "webDir": "dist",
   "bundledWebRuntime": false,
   "server": {
