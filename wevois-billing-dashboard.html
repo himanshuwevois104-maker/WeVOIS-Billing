@@ -847,15 +847,19 @@ async function loadData() {
 
   let userAssignedSiteIds = [];
   if (!isUnrestricted && currentUser?.id) {
-    let { data: asg } = await sb.from('site_assignments').select('site_id').eq('user_id', currentUser.id);
-    if ((!asg || asg.length === 0) && currentUser.email) {
-      const { data: prof } = await sb.from('user_profiles').select('id').eq('email', currentUser.email).maybeSingle();
-      if (prof?.id) {
-        currentUser.id = prof.id;
-        const { data: asg2 } = await sb.from('site_assignments').select('site_id').eq('user_id', prof.id);
-        asg = asg2;
-      }
-    }
+    const userEmail = (currentUser.email || '').toLowerCase();
+    const emailKey = 'usr_' + userEmail.replace(/[^a-z0-9]/g, '_');
+    const checkUserIds = new Set([currentUser.id, emailKey]);
+    if (userEmail.includes('anandtyagi') || userEmail.includes('anand.tyagi')) checkUserIds.add('bm-anand-tyagi');
+
+    const { data: matchedProfs } = await sb.from('user_profiles').select('*').or(`email.ilike.${userEmail},id.eq.${currentUser.id}`);
+    (matchedProfs || []).forEach(p => {
+      if (p.id) checkUserIds.add(p.id);
+      if (p.full_name) currentUser.full_name = p.full_name;
+      if (p.role) currentUser.role = p.role;
+    });
+
+    let { data: asg } = await sb.from('site_assignments').select('site_id').in('user_id', Array.from(checkUserIds));
     userAssignedSiteIds = (asg || []).map(a => a.site_id);
   }
 
@@ -866,7 +870,8 @@ async function loadData() {
     sb.from('user_profiles').select('*'),
     sb.from('site_assignments').select('*')
   ]);
-  profiles = (profsData && profsData.length) ? profsData : [
+
+  const defaultProfiles = [
     { id: 'admin-wevois-id', full_name: 'WeVois Billing Admin', email: 'Wevoisbilling@gmail.com', role: 'admin', employee_id: 'ADMIN001', mobile_no: '9999999999', status: 'active' },
     { id: 'vp-amit-id', full_name: 'Mr. Amit Bhateja (VP)', email: 'Amit@wevois.com', role: 'leadership', employee_id: 'EXEC001', mobile_no: '9888888888', status: 'active' },
     { id: 'ceo-abhishek-id', full_name: 'Abhishek Gupta (CEO)', email: 'Abhishek@wevois.com', role: 'leadership', employee_id: 'EXEC002', mobile_no: '9777777777', status: 'active' },
@@ -884,6 +889,16 @@ async function loadData() {
     { id: 'crm-praveen', full_name: 'Praveen', email: 'praveenwevois@gmail.com', role: 'site_manager', employee_id: 'SIK1945', mobile_no: '9983107032', status: 'active' },
     { id: 'crm-raghvendra', full_name: 'Raghvendra Singh Sikarvar', email: 'raghavendra.wevois@gmail.com', role: 'site_manager', employee_id: 'JAI904', mobile_no: '9694068413', status: 'active' }
   ];
+
+  const mergedMap = new Map();
+  defaultProfiles.forEach(p => mergedMap.set(p.email.toLowerCase(), p));
+  (profsData || []).forEach(p => {
+    if (p && p.email) {
+      const existing = mergedMap.get(p.email.toLowerCase()) || {};
+      mergedMap.set(p.email.toLowerCase(), { ...existing, ...p });
+    }
+  });
+  profiles = Array.from(mergedMap.values());
 
   if (!profiles.some(p => p && p.email && p.email.toLowerCase() === 'wevoisbilling@gmail.com')) {
     profiles.unshift({ id: 'admin-wevois-id', full_name: 'WeVois Billing Admin', email: 'Wevoisbilling@gmail.com', role: 'admin', employee_id: 'ADMIN001', mobile_no: '9999999999', status: 'active' });

@@ -523,15 +523,19 @@ async function loadData() {
 
   let userAssignedSiteIds = [];
   if (!isUnrestricted && currentUser?.id) {
-    let { data: asg } = await sb.from('site_assignments').select('site_id').eq('user_id', currentUser.id);
-    if ((!asg || asg.length === 0) && currentUser.email) {
-      const { data: prof } = await sb.from('user_profiles').select('id').eq('email', currentUser.email).maybeSingle();
-      if (prof?.id) {
-        currentUser.id = prof.id;
-        const { data: asg2 } = await sb.from('site_assignments').select('site_id').eq('user_id', prof.id);
-        asg = asg2;
-      }
-    }
+    const userEmail = (currentUser.email || '').toLowerCase();
+    const emailKey = 'usr_' + userEmail.replace(/[^a-z0-9]/g, '_');
+    const checkUserIds = new Set([currentUser.id, emailKey]);
+    if (userEmail.includes('anandtyagi') || userEmail.includes('anand.tyagi')) checkUserIds.add('bm-anand-tyagi');
+
+    const { data: matchedProfs } = await sb.from('user_profiles').select('*').or(`email.ilike.${userEmail},id.eq.${currentUser.id}`);
+    (matchedProfs || []).forEach(p => {
+      if (p.id) checkUserIds.add(p.id);
+      if (p.full_name) currentUser.full_name = p.full_name;
+      if (p.role) currentUser.role = p.role;
+    });
+
+    let { data: asg } = await sb.from('site_assignments').select('site_id').in('user_id', Array.from(checkUserIds));
     userAssignedSiteIds = (asg || []).map(a => a.site_id);
   }
 
