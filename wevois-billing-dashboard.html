@@ -1987,10 +1987,14 @@ async function openNote(siteId, mk) {
     pdfFrame.style.display = 'block';
     pdfFrame.src = url;
     pdfLink.href = url;
+    pdfLink.innerHTML = '📥 Open / Download Monthly Bill PDF';
     pdfLinkWrap.style.display = 'block';
   } else {
     imgEl.style.display = 'inline-block';
     imgEl.src = url;
+    pdfLink.href = url;
+    pdfLink.innerHTML = '📥 Open / Download Bill Document Image';
+    pdfLinkWrap.style.display = 'block';
   }
 }
 
@@ -2033,7 +2037,7 @@ function syncModeField() {
   const modeWrap = document.getElementById('modeWrap') || document.getElementById('fMode')?.closest('div');
   const noteWrap = document.getElementById('noteWrap') || document.getElementById('fNote')?.closest('.full');
   if (modeWrap) modeWrap.style.display = isCleared ? '' : 'none';
-  if (noteWrap) noteWrap.style.display = isCleared ? '' : 'none';
+  if (noteWrap) noteWrap.style.display = '';
   document.getElementById('fMode').disabled = !isCleared;
 }
 
