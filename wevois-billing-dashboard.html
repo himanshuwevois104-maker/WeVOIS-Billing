@@ -1026,9 +1026,15 @@ async function doLogin() {
       if (!upErr && upData?.user) {
         authUser = upData.user;
       } else {
-        errEl.textContent = 'Sign-in failed: ' + (signErr?.message || upErr?.message || 'Invalid credentials');
-        errEl.style.display = 'block';
-        return;
+        // 3. Fallback for admin-created profiles in database
+        const prof = await getProfile(null, email);
+        if (prof && prof.email) {
+          authUser = { id: prof.id || ('usr_' + email.replace(/[^a-z0-9]/g, '_')), email: prof.email };
+        } else {
+          errEl.textContent = 'Sign-in failed: ' + (signErr?.message || upErr?.message || 'Invalid credentials');
+          errEl.style.display = 'block';
+          return;
+        }
       }
     }
 
