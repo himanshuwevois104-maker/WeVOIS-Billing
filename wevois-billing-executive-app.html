@@ -282,7 +282,10 @@
     </div>
     <div class="login-field">
       <label for="loginPass">Password</label>
-      <input type="password" id="loginPass" placeholder="Enter password" autocomplete="current-password">
+      <div style="position:relative;display:flex;align-items:center;">
+        <input type="password" id="loginPass" placeholder="Enter password" autocomplete="current-password" style="width:100%;padding-right:38px;">
+        <button type="button" id="togglePassBtn" onclick="togglePasswordVisibility()" title="Show / Hide password" style="position:absolute;right:8px;background:none;border:none;cursor:pointer;font-size:15px;padding:4px;color:var(--muted);user-select:none;">👁️</button>
+      </div>
     </div>
     <div style="display:flex;justify-content:flex-end;margin:-4px 0 12px">
       <button type="button" id="forgotPassBtn" onclick="doForgotPassword()" style="background:none;border:none;color:var(--brand);font-size:12px;font-weight:600;cursor:pointer;padding:2px 0">🔑 Forgot password?</button>
@@ -724,6 +727,19 @@ async function doLogin() {
     errEl.style.display='block';
   } finally {
     btn.textContent='Sign in →'; btn.disabled=false;
+  }
+}
+
+function togglePasswordVisibility() {
+  const input = document.getElementById('loginPass');
+  const btn = document.getElementById('togglePassBtn');
+  if (!input) return;
+  if (input.type === 'password') {
+    input.type = 'text';
+    if (btn) btn.textContent = '🙈';
+  } else {
+    input.type = 'password';
+    if (btn) btn.textContent = '👁️';
   }
 }
 
