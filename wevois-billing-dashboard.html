@@ -2538,14 +2538,25 @@ async function loadUsers() {
   const byUser = {};
   (asg || []).forEach(a => { (byUser[a.user_id] ||= []).push(a.site_id); });
   window.__asgByUser = byUser;
-  if (profs && profs.length) profiles = profs;
+
+  if (profs && profs.length) {
+    const profMap = new Map();
+    (profiles || []).forEach(p => { if (p && p.email) profMap.set(p.email.toLowerCase(), p); });
+    profs.forEach(p => {
+      if (p && p.email) {
+        const existing = profMap.get(p.email.toLowerCase()) || {};
+        profMap.set(p.email.toLowerCase(), { ...existing, ...p });
+      }
+    });
+    profiles = Array.from(profMap.values());
+  }
 
   const tbl = document.getElementById('userTable');
   tbl.innerHTML = `<thead><tr><th>Name</th><th>Emp ID</th><th>Mobile No</th><th>Email / Login ID</th><th>Role</th><th>Status</th><th>Sites</th><th>Actions</th></tr></thead><tbody>` +
     (profiles || []).map(p => {
       const ids = byUser[p.id] || [];
       const isAdmin = p.role === 'admin' || p.role === 'leadership';
-      const displayName = p.full_name || p.email?.split('@')[0] || 'User';
+      const displayName = p.full_name || p.name || p.email?.split('@')[0] || 'User';
       const displayEmail = p.email || '—';
       const empId = p.employee_id || '—';
       const mobile = p.mobile_no || '—';
@@ -2681,6 +2692,29 @@ async function createUserAdmin() {
     if (siteIds.length) {
       await sb.from('site_assignments').delete().eq('user_id', newUserId);
       await sb.from('site_assignments').insert(siteIds.map(site_id => ({ user_id: newUserId, site_id })));
+    }
+
+    // Instantly merge into local profiles array so new user appears in Existing Users table
+    const newUserObj = {
+      id: newUserId,
+      full_name: full_name || email.split('@')[0],
+      email: email,
+      role: role,
+      employee_id: employee_id || '—',
+      mobile_no: mobile_no || '—',
+      status: 'active'
+    };
+
+    if (!Array.isArray(profiles)) profiles = [];
+    const idx = profiles.findIndex(p => p.email?.toLowerCase() === email.toLowerCase() || p.id === newUserId);
+    if (idx >= 0) {
+      profiles[idx] = { ...profiles[idx], ...newUserObj };
+    } else {
+      profiles.unshift(newUserObj);
+    }
+
+    if (siteIds.length) {
+      (window.__asgByUser ||= {})[newUserId] = siteIds;
     }
 
     const passToShare = password;
