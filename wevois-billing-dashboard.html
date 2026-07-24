@@ -600,7 +600,10 @@
       </div>
     </div>
 
-    <h2 style="font-size:14px;margin:24px 0 10px">Existing users</h2>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin:24px 0 10px">
+      <h2 style="font-size:14px;margin:0">Existing users</h2>
+      <button class="btn primary" onclick="batchSendTeamCredentials()" style="font-size:11.5px;padding:6px 12px;background:var(--brand)">✉️ Mail Passwords to All Users (Excl. CEO & VP)</button>
+    </div>
     <div style="overflow-x:auto"><table class="mini-table" id="userTable"></table></div>
 
     <div style="display:flex;align-items:center;justify-content:space-between;margin:26px 0 10px">
@@ -2823,6 +2826,57 @@ async function createUserAdmin() {
     btn.textContent = 'Create login & Mail Password';
     btn.disabled = false;
   }
+}
+
+async function batchSendTeamCredentials() {
+  const targetUsers = (profiles || []).filter(p => {
+    const em = (p.email || '').toLowerCase();
+    return em && !em.includes('abhishek') && !em.includes('amit');
+  });
+
+  if (!targetUsers.length) { toast('No target users found.'); return; }
+  if (!confirm(`📧 Batch mail login credentials to ${targetUsers.length} team members (Excluding CEO & VP)?`)) return;
+
+  toast(`Sending login credentials to ${targetUsers.length} team members…`);
+  let sentCount = 0;
+
+  for (const u of targetUsers) {
+    const passToShare = 'WeVOIS#' + (u.employee_id || '2026');
+    const roleTxt = ROLE_META.find(r => r[0] === u.role)?.[1] || u.role;
+    const userHtml = `
+      <div style="font-family:Arial,sans-serif;max-width:580px;margin:0 auto;padding:24px;border:1px solid #cbd5e1;border-radius:12px;background:#ffffff">
+        <div style="background:#0f172a;padding:18px 24px;border-radius:10px 10px 0 0;color:#ffffff">
+          <h2 style="margin:0;font-size:18px;color:#ffffff">🔑 WeVOIS Billing Account Credentials</h2>
+          <p style="margin:4px 0 0;font-size:12px;opacity:0.85">Official user login account details</p>
+        </div>
+        <div style="padding:22px 0;color:#334155;font-size:14px;line-height:1.6">
+          <p>Hello <strong>${u.full_name || u.email}</strong>,</p>
+          <p>Your user login account has been created on the <strong>WeVOIS Municipal Billing System</strong>.</p>
+          <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:10px;padding:16px;margin:18px 0">
+            <p style="margin:0 0 8px">🌐 <strong>Portal Link:</strong> <a href="https://wevoisbilling.vercel.app/wevois-billing-dashboard.html" style="color:#2563eb;font-weight:bold">https://wevoisbilling.vercel.app</a></p>
+            <p style="margin:0 0 8px">📱 <strong>Mobile App Link:</strong> <a href="https://wevoisbilling.vercel.app/wevois-billing-executive-app.html" style="color:#2563eb;font-weight:bold">WeVOIS CRM Mobile App</a></p>
+            <p style="margin:0 0 8px">👤 <strong>Login Email ID:</strong> <code>${u.email}</code></p>
+            <p style="margin:0 0 8px">🔑 <strong>Password:</strong> <code style="font-size:15px;background:#e2e8f0;padding:3px 8px;border-radius:4px;color:#0f172a;font-weight:bold">${passToShare}</code></p>
+            ${u.employee_id ? `<p style="margin:0 0 8px">🆔 <strong>Employee ID:</strong> <code>${u.employee_id}</code></p>` : ''}
+            ${u.mobile_no ? `<p style="margin:0 0 8px">📞 <strong>Mobile No:</strong> <code>${u.mobile_no}</code></p>` : ''}
+            <p style="margin:0">🛡️ <strong>Assigned Role:</strong> <code>${roleTxt}</code></p>
+          </div>
+          <p style="color:#64748b;font-size:12px;margin-top:16px">⚠️ <i>Please keep your password confidential.</i></p>
+        </div>
+      </div>
+    `;
+
+    sendEmail(
+      u.email,
+      `🔑 WeVOIS Account Login Credentials — ${u.full_name || u.email}`,
+      `Hello ${u.full_name || u.email},\n\nYour WeVOIS Billing Login Credentials:\nURL: https://wevoisbilling.vercel.app\nLogin ID: ${u.email}\nPassword: ${passToShare}\nRole: ${roleTxt}\nEmployee ID: ${u.employee_id || 'N/A'}\n\nPlease keep your credentials safe.`,
+      userHtml
+    );
+    sentCount++;
+  }
+
+  logActivity('user_created', `Batch dispatched login credentials to ${sentCount} team members (Excl. Leadership).`, 'Batch Mail');
+  toast(`✅ Logins & Passwords dispatched via email to ${sentCount} team members!`);
 }
 
 /* ============================================================
