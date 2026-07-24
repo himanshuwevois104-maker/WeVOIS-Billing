@@ -2388,14 +2388,14 @@ function roleOptionsHtml(sel) {
   return ROLE_META.map(([v,l]) => `<option value="${v}"${v===sel?' selected':''}>${l}</option>`).join('');
 }
 function siteCheckboxes(containerId, checkedIds) {
-  const set = new Set(checkedIds || []);
+  const set = new Set((checkedIds || []).map(x => String(x)));
   document.getElementById(containerId).innerHTML = sites.map(s =>
     `<label style="display:flex;gap:7px;align-items:center;font-size:12px;font-weight:500;padding:2px 0;cursor:pointer">
-       <input type="checkbox" value="${s.id}" ${set.has(s.id)?'checked':''}> ${s.name} <span class="site-region">· ${s.region}</span>
+       <input type="checkbox" value="${s.id}" ${set.has(String(s.id))?'checked':''}> ${s.name} <span class="site-region">· ${s.region}</span>
      </label>`).join('');
 }
 function checkedSiteIds(containerId) {
-  return [...document.querySelectorAll('#'+containerId+' input:checked')].map(i => +i.value);
+  return [...document.querySelectorAll('#'+containerId+' input:checked')].map(i => i.value);
 }
 
 function generateRandomPassword(length = 10) {
