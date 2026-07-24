@@ -1319,7 +1319,7 @@ function ageCell(rec) {
   }
   const a = ageDays(rec);
   if (a == null) return '<span class="note-none">—</span>';
-  const cls = a > 14 ? 'bad' : (a > 7 ? 'warn' : 'ok');
+  const cls = a > 7 ? 'bad' : (a > 3 ? 'warn' : 'ok');
   return `<span class="age ${cls}" title="Days since the bill reached its current stage">${a}d at stage</span>`;
 }
 function dateTitle(rec) {
@@ -1428,7 +1428,7 @@ function monthTotals(mKey, region, siteId) {
         modeCount[r.mode]++; modeAmt[r.mode] += r.net;
       }
       const age = ageDays(r);
-      if (!isBillCleared(r.status) && age != null && age > 7) stuck++;
+      if (!isBillCleared(r.status) && age != null && age > 3) stuck++;
     }
   });
   return { sub, pen, gst, tds, net: sub - pen - gst - tds, paid, totalCount, reportedCount, stageCount, stageAmt, modeCount, modeAmt, stuck };
@@ -1537,7 +1537,34 @@ function renderBillingManagers() {
   }).join('');
 }
 
-function renderAll() { applyRole(); renderKpis(); renderCharts(); renderFunnel(); renderModes(); renderBillingManagers(); renderTable(); checkAndShoot61to90Alerts(); }
+// Automatic System Notification Trigger for Bills Stuck > 3 Days at same stage
+function checkStuck3DayAlerts() {
+  const sentAlerts = JSON.parse(localStorage.getItem('alerts_sent_stuck_3days') || '{}');
+  sites.forEach(s => {
+    MONTHS.forEach(m => {
+      const rec = records[s.id]?.[m.key];
+      if (rec && rec.reported && !isBillCleared(rec.status)) {
+        const age = ageDays(rec);
+        if (age != null && age > 3) {
+          const alertKey = `${s.id}_${m.key}_${rec.status}_${age}`;
+          if (!sentAlerts[alertKey]) {
+            sentAlerts[alertKey] = new Date().toISOString();
+            localStorage.setItem('alerts_sent_stuck_3days', JSON.stringify(sentAlerts));
+            addNotification(
+              '⚠️ Bill Stuck > 3 Days Alert',
+              `Bill for ${s.name} (${m.label}) has been waiting at stage "${rec.status}" for ${age} days without movement.`,
+              'stuck_3day_alert',
+              'site_manager',
+              s.id
+            );
+          }
+        }
+      }
+    });
+  });
+}
+
+function renderAll() { applyRole(); renderKpis(); renderCharts(); renderFunnel(); renderModes(); renderBillingManagers(); renderTable(); checkAndShoot61to90Alerts(); checkStuck3DayAlerts(); }
 
 /* ============================================================
    KPI cards
@@ -1727,10 +1754,10 @@ function renderFunnel() {
   if (note) {
     if (t.stuck > 0) {
       note.className='aging-note warn';
-      note.innerHTML=`⚠️&nbsp; <span>${t.stuck} unpaid bill${t.stuck===1?'':'s'} waiting <b>more than 7 days</b> at the current stage — see the "Days" column below.</span>`;
+      note.innerHTML=`⚠️&nbsp; <span>${t.stuck} unpaid bill${t.stuck===1?'':'s'} waiting <b>more than 3 days</b> at the current stage — see the "Days" column below.</span>`;
     } else {
       note.className='aging-note ok';
-      note.innerHTML=`✓&nbsp; <span>No unpaid bill has been stuck at a stage for more than 7 days.</span>`;
+      note.innerHTML=`✓&nbsp; <span>No unpaid bill has been stuck at a stage for more than 3 days.</span>`;
     }
   }
 }
