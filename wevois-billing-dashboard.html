@@ -330,8 +330,8 @@
       </div>
     </div>
     <button class="btn" id="installAppBtn" title="Install Mobile App on Android / iOS">📲 Install Mobile App</button>
-    <button class="btn" id="emailSettingsBtn" title="Email Settings &amp; Sender Config">📧 Email Settings</button>
-    <button class="btn" id="activityLogsBtn" title="Audit Trail &amp; User Activity Logs">📜 Activity Logs</button>
+    <button class="btn" id="emailSettingsBtn" title="Email Settings &amp; Sender Config" style="display:none">📧 Email Settings</button>
+    <button class="btn" id="activityLogsBtn" title="Audit Trail &amp; User Activity Logs" style="display:none">📜 Activity Logs</button>
     <button class="btn" id="cityReqBtn" style="display:none">🏙 Request city change</button>
     <button class="btn" id="adminBtn" style="display:none">⚙ Manage users</button>
     <button class="btn primary" id="addBtn">＋ Add / Update Bill</button>
@@ -1338,13 +1338,21 @@ function monthTotals(mKey, region, siteId) {
    Renderers
    ============================================================ */
 function applyRole() {
-  const role = currentUser?.role || 'accounts';
+  const role = (currentUser?.role || 'accounts').toLowerCase();
   const addBtn  = document.getElementById('addBtn');
   const flagBtn = document.getElementById('flagBtn');
   if (addBtn)  addBtn.style.display  = canWrite() ? '' : 'none';
   if (flagBtn) flagBtn.style.display = canFlag()  ? '' : 'none';
   const adminBtn = document.getElementById('adminBtn');
   if (adminBtn) adminBtn.style.display = role === 'admin' ? '' : 'none';
+
+  const isLeadershipOrAdmin = role === 'admin' || role === 'leadership' || role === 'vp' || role === 'ceo';
+  const emailSettingsBtn = document.getElementById('emailSettingsBtn');
+  if (emailSettingsBtn) emailSettingsBtn.style.display = isLeadershipOrAdmin ? '' : 'none';
+
+  const activityLogsBtn = document.getElementById('activityLogsBtn');
+  if (activityLogsBtn) activityLogsBtn.style.display = isLeadershipOrAdmin ? '' : 'none';
+
   const cityReqBtn = document.getElementById('cityReqBtn');
   if (cityReqBtn) cityReqBtn.style.display = role === 'leadership' ? '' : 'none';
   const ROLE_LABEL = {
