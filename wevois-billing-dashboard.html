@@ -960,7 +960,7 @@ async function getProfile(userId, email) {
   try {
     let data = null;
     if (email) {
-      const { data: d1 } = await sb.from('user_profiles').select('*').eq('email', email).maybeSingle();
+      const { data: d1 } = await sb.from('user_profiles').select('*').ilike('email', email.trim()).maybeSingle();
       data = d1;
     }
     if (!data && userId && userId !== 'demo-id') {
@@ -970,16 +970,10 @@ async function getProfile(userId, email) {
     if (data && data.role) return data;
   } catch(e) {}
 
-  let role = 'site_manager';
-  if (email) {
-    const e = email.toLowerCase();
-    if (e.includes('admin')) role = 'admin';
-    else if (e.includes('billing')) role = 'billing_manager';
-    else if (e.includes('vp') || e.includes('ceo') || e.includes('leadership')) role = 'leadership';
-    else if (e.includes('accounts')) role = 'accounts';
-    else role = 'site_manager';
+  if (email && email.toLowerCase() === 'wevoisbilling@gmail.com') {
+    return { id: 'admin-wevois-id', full_name: 'WeVois Billing Admin', email: 'Wevoisbilling@gmail.com', role: 'admin' };
   }
-  return { id: userId || 'demo-id', full_name: email ? email.split('@')[0].toUpperCase() : 'Client Relationship Manager (CRM)', role };
+  return null;
 }
 
 function quickLogin(email, pass) {
