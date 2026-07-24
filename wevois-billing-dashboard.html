@@ -2655,8 +2655,27 @@ function editUserSites(uid) {
 async function saveUserSites() {
   if (!editingSitesFor) return;
   const ids = checkedSiteIds('seSites');
-  await sb.from('site_assignments').delete().eq('user_id', editingSitesFor);
-  if (ids.length) await sb.from('site_assignments').insert(ids.map(site_id => ({ user_id: editingSitesFor, site_id })));
+  const prof = profiles.find(p => p.id === editingSitesFor);
+  const email = prof?.email || '';
+
+  const allUids = new Set([editingSitesFor]);
+  if (email) {
+    allUids.add('usr_' + email.toLowerCase().replace(/[^a-z0-9]/g, '_'));
+    localStorage.setItem('site_asg_' + email.toLowerCase(), JSON.stringify(ids));
+  }
+
+  for (const uid of allUids) {
+    await sb.from('site_assignments').delete().eq('user_id', uid);
+    if (ids.length) {
+      await sb.from('site_assignments').insert(ids.map(site_id => ({ user_id: uid, site_id })));
+    }
+  }
+
+  if (window.__asgByUser) {
+    window.__asgByUser[editingSitesFor] = ids;
+    if (email) window.__asgByUser[email.toLowerCase()] = ids;
+  }
+
   toast('Sites updated successfully');
   document.getElementById('siteEditor').style.display = 'none';
   editingSitesFor = null;
@@ -2703,10 +2722,25 @@ async function createUserAdmin() {
       await sb.from('user_profiles').update({ full_name: full_name || email.split('@')[0], role, employee_id, mobile_no, status: 'active' }).eq('email', email);
     }
 
-    // Step 3: Assign selected sites/cities to the new user
+    // Step 3: Assign selected sites/cities to the user across ALL candidate user IDs
+    const allUserIdsToAssign = new Set([newUserId, 'usr_' + email.toLowerCase().replace(/[^a-z0-9]/g, '_')]);
+    if (email.toLowerCase().includes('anandtyagi') || email.toLowerCase().includes('anand.tyagi')) {
+      allUserIdsToAssign.add('bm-anand-tyagi');
+    }
+    const { data: matchedProfs } = await sb.from('user_profiles').select('id').ilike('email', email);
+    (matchedProfs || []).forEach(mp => { if (mp.id) allUserIdsToAssign.add(mp.id); });
+
+    for (const uid of allUserIdsToAssign) {
+      await sb.from('site_assignments').delete().eq('user_id', uid);
+      if (siteIds.length) {
+        await sb.from('site_assignments').insert(siteIds.map(site_id => ({ user_id: uid, site_id })));
+      }
+    }
+
     if (siteIds.length) {
-      await sb.from('site_assignments').delete().eq('user_id', newUserId);
-      await sb.from('site_assignments').insert(siteIds.map(site_id => ({ user_id: newUserId, site_id })));
+      localStorage.setItem('site_asg_' + email.toLowerCase(), JSON.stringify(siteIds));
+      (window.__asgByUser ||= {})[newUserId] = siteIds;
+      (window.__asgByUser ||= {})[email.toLowerCase()] = siteIds;
     }
 
     // Instantly merge into local profiles array so new user appears in Existing Users table
