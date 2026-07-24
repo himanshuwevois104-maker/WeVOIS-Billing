@@ -2632,9 +2632,14 @@ async function saveUserSites() {
 
   const allUids = new Set([editingSitesFor]);
   if (email) {
-    allUids.add('usr_' + email.toLowerCase().replace(/[^a-z0-9]/g, '_'));
-    localStorage.setItem('site_asg_' + email.toLowerCase(), JSON.stringify(ids));
+    const emLower = email.toLowerCase();
+    allUids.add(emLower);
+    allUids.add('usr_' + emLower.replace(/[^a-z0-9]/g, '_'));
+    if (emLower.includes('anandtyagi') || emLower.includes('anand.tyagi')) allUids.add('bm-anand-tyagi');
+    localStorage.setItem('site_asg_' + emLower, JSON.stringify(ids));
   }
+  const { data: matchedProfs } = await sb.from('user_profiles').select('id').ilike('email', email);
+  (matchedProfs || []).forEach(mp => { if (mp.id) allUids.add(mp.id); });
 
   for (const uid of allUids) {
     await sb.from('site_assignments').delete().eq('user_id', uid);
@@ -2644,14 +2649,13 @@ async function saveUserSites() {
   }
 
   if (window.__asgByUser) {
-    window.__asgByUser[editingSitesFor] = ids;
-    if (email) window.__asgByUser[email.toLowerCase()] = ids;
+    allUids.forEach(uid => { window.__asgByUser[uid] = ids; });
   }
 
   toast('Sites updated successfully');
   document.getElementById('siteEditor').style.display = 'none';
   editingSitesFor = null;
-  loadUsers();
+  await loadUsers();
 }
 
 async function createUserAdmin() {
