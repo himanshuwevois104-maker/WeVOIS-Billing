@@ -864,6 +864,44 @@ function cycleDays(rec) {
   if(!rec||!rec.dates||rec.dates.Paid==null||rec.dates.Submitted==null)return null;
   return Math.max(0,Math.round((rec.dates.Paid-rec.dates.Submitted)/DAY));
 }
+function getLeadershipEmails() {
+  const defaults = ['Amit@wevois.com', 'Abhishek@wevois.com'];
+  try {
+    const fromDb = (profsData || [])
+      .filter(p => p && (p.role === 'leadership' || p.role === 'admin' || (p.email && p.email.toLowerCase().includes('wevois'))))
+      .map(p => p.email)
+      .filter(Boolean);
+    return [...new Set([...defaults, ...fromDb])];
+  } catch(e) {
+    return defaults;
+  }
+}
+
+const emailConfig = {
+  senderEmail: 'Wevoisbilling@gmail.com',
+  apiKey: localStorage.getItem('em_api_key') || 'dtjziscyrftrpkxy'
+};
+
+async function sendEmail(to, subject, bodyText, htmlContent = null) {
+  const recipients = (Array.isArray(to) ? to : [to]).filter(Boolean);
+  if (!recipients.length) return false;
+  try {
+    const apiRes = await fetch('/api/send-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        to: recipients,
+        subject: subject,
+        text: bodyText,
+        html: htmlContent,
+        pass: emailConfig.apiKey
+      })
+    });
+    const apiData = await apiRes.json();
+    return apiRes.ok && apiData.success;
+  } catch(e) { return false; }
+}
+
 function isBillCleared(status) {
   if (!status) return false;
   const s = String(status).toLowerCase();
@@ -1241,13 +1279,59 @@ async function saveSheet() {
     // Trigger live real-time notification to CEO & VP Dashboard
     const siteObj = sites.find(s=>s.id===state.site);
     const monthObj = MONTHS.find(m=>m.key===state.month);
-    addNotification(
-      '✏️ CRM Mobile App Update',
-      `${currentUser?.full_name || 'CRM Ground Manager'} updated stage to "${pickedStage}" for ${siteObj?.name || 'Site'} (${monthObj?.label || state.month}).`,
-      'stage_updated',
-      'leadership',
-      state.site
-    );
+    const leadershipRecipients = getLeadershipEmails();
+
+    const isCleared = isBillCleared(pickedStage);
+    if (isCleared) {
+      const gst = +document.getElementById('uGst')?.value || 0;
+      const tds = +document.getElementById('uTds')?.value || 0;
+      const netPayable = billed - penalty - gst - tds;
+      const totalDeductions = penalty + gst + tds;
+      const payMode = document.getElementById('uMode')?.value || prev?.mode || 'Treasury';
+      const clearDate = document.getElementById('uDate')?.value || new Date().toLocaleDateString('en-IN');
+      const remark = document.getElementById('uRemark')?.value.trim() || '';
+
+      const clearedSubject = `🎉 BILL CLEARED: ${siteObj?.name || 'Site'} (${monthObj?.label || state.month})`;
+      const clearedBody = `BILL CLEARED SUMMARY ALERT (CEO & VP):
+
+Site Name: ${siteObj?.name || 'Site'} (${siteObj?.region || 'Rajasthan'})
+Billing Month: ${monthObj?.label || state.month}
+Status: 🎉 ${pickedStage} (Cleared & Settled)
+
+--------------------------------------------
+💰 Gross Billed Amount:  ₹${billed.toLocaleString('en-IN')}
+🔻 Total Deductions:    ₹${totalDeductions.toLocaleString('en-IN')}
+   - Penalty:           ₹${penalty.toLocaleString('en-IN')}
+   - GST Deduction:     ₹${gst.toLocaleString('en-IN')}
+   - TDS Deduction:     ₹${tds.toLocaleString('en-IN')}
+--------------------------------------------
+✅ Net Amount Cleared:  ₹${netPayable.toLocaleString('en-IN')}
+💳 Payment Mode:        ${payMode}
+📅 Date Cleared:        ${clearDate}
+👤 Cleared By:          ${currentUser?.full_name || currentUser?.email || 'User'} (${currentUser?.role || 'user'})
+${remark ? '💬 Remark:               ' + remark : ''}
+
+Sender: ${emailConfig.senderEmail}
+Recipients: ${leadershipRecipients.join(', ')}`;
+
+      sendEmail(leadershipRecipients, clearedSubject, clearedBody);
+
+      addNotification(
+        `🎉 Bill Cleared: ${siteObj?.name || 'Site'} (${monthObj?.label || state.month})`,
+        `Gross: ₹${short(billed)}, Net Cleared: ₹${short(netPayable)}, Total Deductions: ₹${short(totalDeductions)} (${payMode}).`,
+        'bill_cleared',
+        'leadership',
+        state.site
+      );
+    } else {
+      addNotification(
+        '✏️ CRM Mobile App Update',
+        `${currentUser?.full_name || 'CRM Ground Manager'} updated stage to "${pickedStage}" for ${siteObj?.name || 'Site'} (${monthObj?.label || state.month}).`,
+        'stage_updated',
+        'leadership',
+        state.site
+      );
+    }
 
     toast('Saved — '+(siteObj?.name||'')+' · '+(monthObj?.label||''));
   } catch (e) {

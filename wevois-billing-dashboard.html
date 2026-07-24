@@ -2402,7 +2402,46 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
     const uRole = (currentUser?.role || '').toLowerCase();
     const leadershipRecipients = getLeadershipEmails();
 
-    if (uRole === 'billing_manager') {
+    const isCleared = isBillCleared(status);
+    if (isCleared) {
+      const netPayable = billed - penalty - gst - tds;
+      const totalDeductions = penalty + gst + tds;
+      const payMode = document.getElementById('fMode')?.value || prev?.mode || 'Treasury';
+      const clearDate = dv ? dv : new Date().toLocaleDateString('en-IN');
+
+      const clearedSubject = `🎉 BILL CLEARED: ${siteObj?.name || 'Site'} (${monthObj?.label || mk})`;
+      const clearedBody = `BILL CLEARED SUMMARY ALERT (CEO & VP):
+
+Site Name: ${siteObj?.name || 'Site'} (${siteObj?.region || 'Rajasthan'})
+Billing Month: ${monthObj?.label || mk}
+Status: 🎉 ${status} (Cleared & Settled)
+
+--------------------------------------------
+💰 Gross Billed Amount:  ₹${billed.toLocaleString('en-IN')}
+🔻 Total Deductions:    ₹${totalDeductions.toLocaleString('en-IN')}
+   - Penalty:           ₹${penalty.toLocaleString('en-IN')}
+   - GST Deduction:     ₹${gst.toLocaleString('en-IN')}
+   - TDS Deduction:     ₹${tds.toLocaleString('en-IN')}
+--------------------------------------------
+✅ Net Amount Cleared:  ₹${netPayable.toLocaleString('en-IN')}
+💳 Payment Mode:        ${payMode}
+📅 Date Cleared:        ${clearDate}
+👤 Cleared By:          ${currentUser?.full_name || currentUser?.email || 'User'} (${currentUser?.role || 'user'})
+${remark ? '💬 Remark:               ' + remark : ''}
+
+Sender: ${emailConfig.senderEmail}
+Recipients: ${leadershipRecipients.join(', ')}`;
+
+      sendEmail(leadershipRecipients, clearedSubject, clearedBody);
+
+      addNotification(
+        `🎉 Bill Cleared: ${siteObj?.name || 'Site'} (${monthObj?.label || mk})`,
+        `Gross: ₹${short(billed)}, Net Cleared: ₹${short(netPayable)}, Total Deductions: ₹${short(totalDeductions)} (${payMode}).`,
+        'bill_cleared',
+        'leadership',
+        sid
+      );
+    } else if (uRole === 'billing_manager') {
       addNotification(
         '📄 Monthly Bill Uploaded',
         `${currentUser?.full_name || 'Billing Manager HQ'} uploaded bill PDF copy for ${siteObj?.name || 'Site'} (${monthObj?.label || mk}).`,
