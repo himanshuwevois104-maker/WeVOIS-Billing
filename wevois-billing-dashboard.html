@@ -864,6 +864,22 @@ async function loadData() {
 
     let { data: asg } = await sb.from('site_assignments').select('site_id').in('user_id', Array.from(checkUserIds));
     userAssignedSiteIds = (asg || []).map(a => a.site_id);
+
+    if (userAssignedSiteIds.length === 0) {
+      for (const uid of checkUserIds) {
+        if ((window.__asgByUser || {})[uid] && (window.__asgByUser || {})[uid].length) {
+          userAssignedSiteIds = (window.__asgByUser || {})[uid];
+          break;
+        }
+      }
+    }
+
+    if (userAssignedSiteIds.length === 0 && userEmail) {
+      const cachedAsg = localStorage.getItem('site_asg_' + userEmail);
+      if (cachedAsg) {
+        try { userAssignedSiteIds = JSON.parse(cachedAsg); } catch(e){}
+      }
+    }
   }
 
   const [{ data: sitesData, error: se }, { data: billsData, error: be }, { data: flagsData }, { data: profsData }, { data: asgData }] = await Promise.all([
@@ -2572,7 +2588,13 @@ async function loadUsers() {
   const tbl = document.getElementById('userTable');
   tbl.innerHTML = `<thead><tr><th>Name</th><th>Emp ID</th><th>Mobile No</th><th>Email / Login ID</th><th>Role</th><th>Status</th><th>Sites</th><th>Actions</th></tr></thead><tbody>` +
     (profiles || []).map(p => {
-      const ids = byUser[p.id] || [];
+      const userEmailKey = (p.email || '').toLowerCase();
+      const emailKey = 'usr_' + userEmailKey.replace(/[^a-z0-9]/g, '_');
+      let ids = byUser[p.id] || byUser[userEmailKey] || byUser[emailKey] || (window.__asgByUser || {})[p.id] || (window.__asgByUser || {})[userEmailKey] || [];
+      if (!ids.length && userEmailKey) {
+        const cached = localStorage.getItem('site_asg_' + userEmailKey);
+        if (cached) { try { ids = JSON.parse(cached); } catch(e){} }
+      }
       const isAdmin = p.role === 'admin' || p.role === 'leadership';
       const displayName = p.full_name || p.name || p.email?.split('@')[0] || 'User';
       const displayEmail = p.email || '—';
