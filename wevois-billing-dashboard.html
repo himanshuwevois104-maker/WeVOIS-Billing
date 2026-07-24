@@ -2727,7 +2727,7 @@ async function createUserAdmin() {
     `;
 
     sendEmail(
-      [email, ...getLeadershipEmails()],
+      email,
       `🔑 WeVOIS Billing Account & Credentials: ${full_name || email}`,
       `Hello ${full_name || email},\n\nYour WeVOIS Billing login credentials:\nURL: https://wevoisbilling.vercel.app\nLogin ID: ${email}\nPassword: ${passToShare}\nRole: ${roleTxt}\nEmployee ID: ${employee_id || 'N/A'}\n\nPlease keep your credentials safe.`,
       userHtml
