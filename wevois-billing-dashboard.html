@@ -891,9 +891,7 @@ async function loadData() {
   ]);
 
   const defaultProfiles = [
-    { id: 'admin-wevois-id', full_name: 'WeVois Billing Admin', email: 'Wevoisbilling@gmail.com', role: 'admin', employee_id: 'ADMIN001', mobile_no: '9999999999', status: 'active' },
-    { id: 'vp-amit-id', full_name: 'Mr. Amit Bhateja (VP)', email: 'Amit@wevois.com', role: 'leadership', employee_id: 'EXEC001', mobile_no: '9888888888', status: 'active' },
-    { id: 'ceo-abhishek-id', full_name: 'Abhishek Gupta (CEO)', email: 'Abhishek@wevois.com', role: 'leadership', employee_id: 'EXEC002', mobile_no: '9777777777', status: 'active' }
+    { id: 'admin-wevois-id', full_name: 'WeVois Billing Admin', email: 'Wevoisbilling@gmail.com', role: 'admin', employee_id: 'ADMIN001', mobile_no: '9999999999', status: 'active' }
   ];
 
   const mergedMap = new Map();
@@ -910,25 +908,7 @@ async function loadData() {
     profiles.unshift({ id: 'admin-wevois-id', full_name: 'WeVois Billing Admin', email: 'Wevoisbilling@gmail.com', role: 'admin', employee_id: 'ADMIN001', mobile_no: '9999999999', status: 'active' });
   }
 
-  siteAssignments = (asgData && asgData.length) ? asgData : [
-    { user_id: 'bm-nirmal-saini', site_id: 101 }, { user_id: 'bm-nirmal-saini', site_id: 102 },
-    { user_id: 'bm-nirmal-saini', site_id: 103 }, { user_id: 'bm-nirmal-saini', site_id: 104 },
-    { user_id: 'bm-nirmal-saini', site_id: 105 }, { user_id: 'bm-nirmal-saini', site_id: 106 },
-    { user_id: 'bm-nirmal-saini', site_id: 107 }, { user_id: 'bm-nirmal-saini', site_id: 108 },
-    { user_id: 'bm-nirmal-saini', site_id: 109 },
-    { user_id: 'bm-anand-tyagi', site_id: 110 }, { user_id: 'bm-anand-tyagi', site_id: 111 },
-    { user_id: 'bm-anand-tyagi', site_id: 112 }, { user_id: 'bm-anand-tyagi', site_id: 113 },
-    { user_id: 'bm-anand-tyagi', site_id: 114 }, { user_id: 'bm-anand-tyagi', site_id: 115 },
-    { user_id: 'bm-anand-tyagi', site_id: 116 },
-    { user_id: 'crm-deependra', site_id: 101 }, { user_id: 'crm-vijendra', site_id: 102 },
-    { user_id: 'crm-ghanshyam', site_id: 103 }, { user_id: 'crm-rohit', site_id: 104 },
-    { user_id: 'crm-rohit', site_id: 105 }, { user_id: 'crm-deepak', site_id: 106 },
-    { user_id: 'crm-suraj', site_id: 107 }, { user_id: 'crm-bhavesh', site_id: 108 },
-    { user_id: 'crm-bhavesh', site_id: 109 }, { user_id: 'crm-raju', site_id: 110 },
-    { user_id: 'crm-govind', site_id: 111 }, { user_id: 'crm-govind', site_id: 112 },
-    { user_id: 'crm-govind', site_id: 113 }, { user_id: 'crm-praveen', site_id: 114 },
-    { user_id: 'crm-raghvendra', site_id: 115 }, { user_id: 'bm-anand-tyagi', site_id: 116 }
-  ];
+  siteAssignments = asgData || [];
 
   const rawSites = (sitesData && sitesData.length) ? sitesData : [
     { id: 101, name: 'Ajmer', region: 'Rajasthan', workflow_steps: null },
@@ -2564,9 +2544,7 @@ async function loadUsers() {
     profiles = profs;
   } else {
     profiles = [
-      { id: 'admin-wevois-id', full_name: 'WeVois Billing Admin', email: 'Wevoisbilling@gmail.com', role: 'admin', employee_id: 'ADMIN001', mobile_no: '9999999999', status: 'active' },
-      { id: 'vp-amit-id', full_name: 'Mr. Amit Bhateja (VP)', email: 'Amit@wevois.com', role: 'leadership', employee_id: 'EXEC001', mobile_no: '9888888888', status: 'active' },
-      { id: 'ceo-abhishek-id', full_name: 'Abhishek Gupta (CEO)', email: 'Abhishek@wevois.com', role: 'leadership', employee_id: 'EXEC002', mobile_no: '9777777777', status: 'active' }
+      { id: 'admin-wevois-id', full_name: 'WeVois Billing Admin', email: 'Wevoisbilling@gmail.com', role: 'admin', employee_id: 'ADMIN001', mobile_no: '9999999999', status: 'active' }
     ];
   }
 
