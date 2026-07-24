@@ -284,6 +284,9 @@
       <label for="loginPass">Password</label>
       <input type="password" id="loginPass" placeholder="Enter password" autocomplete="current-password">
     </div>
+    <div style="display:flex;justify-content:flex-end;margin:-4px 0 12px">
+      <button type="button" id="forgotPassBtn" onclick="doForgotPassword()" style="background:none;border:none;color:var(--brand);font-size:12px;font-weight:600;cursor:pointer;padding:2px 0">🔑 Forgot password?</button>
+    </div>
     <button class="login-btn" id="loginBtn" onclick="doLogin()">Sign in →</button>
     <p class="login-hint">Demo: suresh@wevois.com / exec123</p>
   </div>
@@ -721,6 +724,51 @@ async function doLogin() {
     errEl.style.display='block';
   } finally {
     btn.textContent='Sign in →'; btn.disabled=false;
+  }
+}
+
+async function doForgotPassword() {
+  const emailInput = document.getElementById('loginEmail');
+  const errEl = document.getElementById('loginErr');
+  const email = (emailInput?.value || '').trim();
+
+  if (!email) {
+    errEl.textContent = '⚠️ Please enter your email address first, then click "Forgot password?".';
+    errEl.style.display = 'block';
+    errEl.style.color = '#dc2626';
+    errEl.style.background = '#fef2f2';
+    errEl.style.borderColor = '#fecaca';
+    emailInput?.focus();
+    return;
+  }
+
+  errEl.style.display = 'none';
+  const btn = document.getElementById('forgotPassBtn');
+  const origTxt = btn ? btn.textContent : '';
+  if (btn) { btn.textContent = 'Sending reset link…'; btn.disabled = true; }
+
+  try {
+    const redirectUrl = window.location.origin + window.location.pathname;
+    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: redirectUrl });
+
+    if (error) {
+      errEl.textContent = 'Reset request failed: ' + error.message;
+      errEl.style.display = 'block';
+      errEl.style.color = '#dc2626';
+      errEl.style.background = '#fef2f2';
+      errEl.style.borderColor = '#fecaca';
+    } else {
+      errEl.style.display = 'block';
+      errEl.style.color = '#15803d';
+      errEl.style.background = '#f0fdf4';
+      errEl.style.borderColor = '#bbf7d0';
+      errEl.innerHTML = `✉️ <strong>Password Reset Magic Link Sent!</strong><br>A password reset magic link has been sent to <strong>${email}</strong>.<br>Please check your inbox / spam folder to reset your password.`;
+    }
+  } catch (e) {
+    errEl.textContent = 'Reset request error: ' + e.message;
+    errEl.style.display = 'block';
+  } finally {
+    if (btn) { btn.textContent = origTxt; btn.disabled = false; }
   }
 }
 
